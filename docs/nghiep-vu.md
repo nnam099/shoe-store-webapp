@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Phiên bản | v3.1 (viết lại từ v2, đã bổ sung góp ý rà soát: công thức tiền, slug, ảnh, phiên đăng nhập, rate limit) |
+| Phiên bản | v3.2 (bổ sung nhãn trang trí sản phẩm do admin chọn thủ công theo `SP-15`) |
 | Nguồn gốc | Đề tài dự án môn Lập trình web, PTIT: "Xây dựng website thương mại điện tử bán giày" |
 | Đối tượng đọc | Nhóm phát triển và AI coding agent (Codex) |
 | Quy ước | "phải" = bắt buộc; "không được" = cấm; "nên" = khuyến khích, có thể bỏ nếu thiếu thời gian |
@@ -135,7 +135,7 @@ Agent không được tự thêm chức năng thuộc mục "Ngoại phạm vi" 
 
 #### QT-A02 Quản lý sản phẩm
 - **Chức năng:** danh sách (tìm theo tên, lọc theo thương hiệu/loại, sắp xếp, phân trang 20/trang); thêm; sửa; xóa; quản lý ảnh; sửa giá bán và giá khuyến mãi; quản lý biến thể và tồn kho.
-- **Thêm/sửa sản phẩm gồm:** tên, mô tả, chất liệu, thương hiệu (1), loại giày (1), giá bán, giá khuyến mãi (tùy chọn), danh sách ảnh (ảnh đầu tiên là ảnh chính, sắp xếp lại được), danh sách biến thể (size, màu, tồn kho).
+- **Thêm/sửa sản phẩm gồm:** tên, mô tả, chất liệu, thương hiệu (1), loại giày (1), giá bán, giá khuyến mãi (tùy chọn), nhãn trang trí (tùy chọn), danh sách ảnh (ảnh đầu tiên là ảnh chính, sắp xếp lại được), danh sách biến thể (size, màu, tồn kho).
 - **Ngoại lệ:** thiếu trường bắt buộc; giá khuyến mãi lớn hơn hoặc bằng giá bán; trùng cặp size-màu trong cùng sản phẩm; ảnh sai định dạng hoặc quá dung lượng.
 - **Tiêu chí hoàn thành:**
   - [ ] Xóa sản phẩm là **xóa mềm** (`SP-08`).
@@ -156,8 +156,8 @@ Agent không được tự thêm chức năng thuộc mục "Ngoại phạm vi" 
 - **Tiêu chí hoàn thành:** mọi lần đổi trạng thái được ghi lại (ai, khi nào, từ đâu sang đâu); chuyển trạng thái sai luồng bị backend từ chối.
 
 #### QT-A06 Quản lý tài khoản quản trị
-- Thêm admin mới, sửa thông tin, đổi mật khẩu, xóa tài khoản.
-- **Ngoại lệ:** admin không được tự xóa chính mình; không được xóa admin cuối cùng; email trùng.
+- Thêm admin mới, sửa thông tin, đổi mật khẩu, xóa mềm tài khoản. Admin đã xóa mềm không đăng nhập hoặc sử dụng API quản trị được; không xóa cứng để giữ lịch sử audit.
+- **Ngoại lệ:** admin không được tự xóa chính mình; không được xóa mềm admin đang hoạt động cuối cùng; email trùng, kể cả email của admin đã xóa mềm.
 
 #### QT-A07 Thống kê báo cáo
 - Doanh thu theo **ngày / tuần / tháng** (chọn khoảng thời gian, hiển thị bảng và biểu đồ), tổng số lượng sản phẩm bán ra, danh sách sản phẩm bán chạy (top 10, lọc theo khoảng thời gian).
@@ -184,6 +184,8 @@ Agent không được tự thêm chức năng thuộc mục "Ngoại phạm vi" 
 - `SP-11` Ảnh chấp nhận định dạng JPG, PNG, WebP, tối đa 5 MB/ảnh và 8 ảnh/sản phẩm.
 - `SP-12` **Slug** của sản phẩm do hệ thống sinh tự động từ tên lúc tạo (chữ thường, bỏ dấu tiếng Việt, ký tự đặc biệt thành dấu gạch ngang). Slug phải duy nhất: nếu trùng thì thêm hậu tố `-2`, `-3`... Slug **không đổi** khi admin đổi tên sản phẩm và admin không sửa tay, để link cũ không bị hỏng. Slug của sản phẩm đã xóa mềm không được cấp lại cho sản phẩm khác. Trang chi tiết truy cập bằng slug.
 - `SP-13` **Không xóa file ảnh vật lý** trong bản này. Khi admin gỡ ảnh khỏi sản phẩm hoặc xóa mềm sản phẩm, chỉ gỡ/đánh dấu bản ghi trong database, file vẫn nằm trong thư mục upload. Nhờ đó đường dẫn ảnh đã snapshot trong đơn hàng cũ (`DH-06`) luôn còn dùng được. Việc dọn dẹp file mồ côi nằm ngoài phạm vi.
+- `SP-14` Xóa biến thể là **xóa mềm**, không xóa cứng. Biến thể đã xóa mềm không hiển thị để chọn, không thêm vào giỏ và không được checkout, nhưng vẫn được giữ để tham chiếu đơn cũ và hoàn kho khi hủy đơn. Khôi phục biến thể phải dùng lại đúng bản ghi cũ (bỏ dấu xóa), không tạo bản ghi mới cho cùng cặp (sản phẩm, size, màu). Không được xóa mềm biến thể đang bán cuối cùng của sản phẩm vì mỗi sản phẩm phải còn ít nhất một biến thể theo `SP-06`.
+- `SP-15` Admin có thể gắn cho mỗi sản phẩm một nhãn trang trí — một trong "Mới", "Bán chạy", "Nổi bật" — hoặc không gắn. Đây là lựa chọn thủ công của admin khi thêm/sửa sản phẩm, không tự động tính từ doanh số hay ngày tạo ở P1.
 
 ### 4.2 Giỏ hàng
 - `GH-01` Giỏ hàng chứa các dòng (biến thể, số lượng). Mỗi biến thể chỉ có **một dòng** trong giỏ; thêm lần nữa thì cộng dồn số lượng.
@@ -195,13 +197,13 @@ Agent không được tự thêm chức năng thuộc mục "Ngoại phạm vi" 
 
 ### 4.3 Đơn hàng
 - `DH-01` Đơn hàng phải có ít nhất một dòng sản phẩm. Số lượng mỗi dòng phải lớn hơn 0.
-- `DH-02` Mã đơn là duy nhất, dễ đọc (dạng `DH` + ngày + số thứ tự, ví dụ `DH250920-0001`) và không lộ số thứ tự nội bộ của database.
+- `DH-02` Mã đơn là duy nhất, có dạng `DH` + `yyMMdd` theo múi giờ `Asia/Ho_Chi_Minh` + `-` + 6 ký tự ngẫu nhiên viết hoa lấy từ bảng `23456789ABCDEFGHJKMNPQRSTUVWXYZ` (đã loại `0`, `1`, `I`, `L`, `O` để tránh nhầm), ví dụ `DH260921-7K3M9Q`. Service sinh mã, insert đơn, và sinh hậu tố mới để retry nếu gặp trùng unique. Mã không dùng hoặc làm lộ ID nội bộ của database.
 - `DH-03` Đơn có thể do Guest hoặc Customer đặt. Với Guest thì không gắn tài khoản. Với Customer thì gắn tài khoản.
 - `DH-04` Thanh toán duy nhất là COD. Không có bước thanh toán online.
 - `DH-05` Đơn hàng có **ba khái niệm tiền tách biệt**, đều là số nguyên VND và đều lưu vào đơn tại lúc tạo:
   - `line_total` (thành tiền một dòng) = đơn giá tại lúc mua × số lượng.
   - `subtotal` (tiền hàng) = tổng các `line_total`.
-  - `shipping_fee` (phí vận chuyển) = **một giá trị cố định cấu hình được** (mặc định 30.000 VND) áp dụng cho mọi đơn.
+  - `shipping_fee` (phí vận chuyển) = **một giá trị cố định lấy từ biến môi trường của backend** (mặc định 30.000 VND) áp dụng cho mọi đơn.
   - `grand_total` (tổng thanh toán, số tiền khách trả khi nhận hàng) = `subtotal` + `shipping_fee`.
 
   Backend tính toàn bộ, không nhận bất kỳ giá trị tiền nào từ client. Đổi cấu hình phí ship sau này không làm đổi các đơn cũ.
@@ -236,7 +238,7 @@ Agent không được tự thêm chức năng thuộc mục "Ngoại phạm vi" 
 - `TKH-05a` Token được lưu ở **localStorage** của trình duyệt (chấp nhận đánh đổi về XSS cho đồ án; không dùng httpOnly cookie). Vì vậy frontend phải tránh chèn HTML thô từ dữ liệu người dùng (tên, nhận xét, mô tả) để hạn chế XSS. Đăng xuất chỉ xóa token phía client; đổi mật khẩu không vô hiệu hóa token cũ (ngoài phạm vi).
 - `TKH-05b` Đăng nhập sai và các thao tác nhạy cảm bị giới hạn tần suất theo ngưỡng ở `NF-04`.
 - `TKH-06` Đổi mật khẩu bắt buộc nhập đúng mật khẩu cũ.
-- `TKH-07` Email của Admin là duy nhất. Không được xóa admin cuối cùng và không được tự xóa chính mình.
+- `TKH-07` Email của Admin là duy nhất trên toàn bộ bảng, kể cả tài khoản đã xóa mềm, nên không được tái sử dụng. Xóa Admin là xóa mềm; không được tự xóa chính mình và không được xóa mềm admin đang hoạt động cuối cùng.
 
 ### 4.6 Đánh giá (P2)
 - `DG-01` Chỉ Customer đã đăng nhập mới được đánh giá.
@@ -249,7 +251,7 @@ Agent không được tự thêm chức năng thuộc mục "Ngoại phạm vi" 
 - `TK-01` Doanh thu chỉ tính từ đơn **"Hoàn thành"**. Đơn "Hủy" và các trạng thái chưa hoàn thành không được tính.
 - `TK-02` Doanh thu của một đơn = **tổng tiền hàng** (không gồm phí vận chuyển).
 - `TK-03` Ngày ghi nhận doanh thu là **ngày đơn chuyển sang "Hoàn thành"**, tính theo múi giờ `Asia/Ho_Chi_Minh`. Tuần bắt đầu từ thứ Hai.
-- `TK-04` "Số lượng sản phẩm bán ra" và "Sản phẩm bán chạy" tính trên cùng tập đơn "Hoàn thành" và cùng khoảng thời gian. Bán chạy xếp theo tổng số lượng giảm dần, dùng dữ liệu snapshot trong chi tiết đơn.
+- `TK-04` "Số lượng sản phẩm bán ra" và "Sản phẩm bán chạy" tính trên cùng tập đơn "Hoàn thành" và cùng khoảng thời gian. Các dòng được gộp theo `order_items.product_id`; nội dung hiển thị dùng dữ liệu snapshot trong chi tiết đơn. Bán chạy xếp theo tổng số lượng giảm dần; nếu bằng nhau thì theo doanh thu tiền hàng giảm dần, sau đó theo `product_id` tăng dần để kết quả ổn định.
 
 ### 4.8 Danh sách và giao diện
 - `UI-01` Mọi danh sách (sản phẩm, đơn hàng, khách hàng, đánh giá) phải hỗ trợ tìm kiếm, lọc, sắp xếp, phân trang **ở backend**. Không được tải toàn bộ dữ liệu rồi lọc ở trình duyệt.
@@ -289,12 +291,12 @@ stateDiagram-v2
 | Đang chuẩn bị | Hủy | Admin | Hoàn tồn kho |
 | Đang giao | Đã giao | Admin | |
 | Đang giao | Hủy | Admin | Hoàn tồn kho (giao thất bại) |
-| Đã giao | Hoàn thành | Admin, hoặc hệ thống tự động sau 7 ngày | Ghi `completed_at`; **P2** cho phần tự động |
+| Đã giao | Hoàn thành | Admin, hoặc hệ thống tự động sau đúng 7 ngày (168 giờ) kể từ lúc chuyển sang "Đã giao" | Ghi `completed_at`; **P2** cho phần tự động |
 | Hoàn thành | (không đổi) | | Trạng thái cuối |
 | Hủy | (không đổi) | | Trạng thái cuối |
 
 - `TT-01` Mọi chuyển trạng thái **không có trong bảng** đều bị backend từ chối (kể cả nhảy cóc và lùi trạng thái).
-- `TT-02` Mỗi lần đổi trạng thái phải ghi vào lịch sử trạng thái: từ trạng thái, sang trạng thái, người thực hiện (Guest/Customer/Admin/Hệ thống), thời điểm, ghi chú (nếu có).
+- `TT-02` Mỗi lần đổi trạng thái phải ghi vào lịch sử trạng thái: từ trạng thái, sang trạng thái, người thực hiện (Guest/Customer/Admin/Hệ thống), thời điểm, ghi chú (nếu có). Ngay khi tạo đơn cũng phải ghi một bản ghi lịch sử trong cùng transaction, với trạng thái trước là NULL và trạng thái sau là "Chờ xác nhận".
 - `TT-03` Việc đổi trạng thái và các hệ quả (hoàn tồn kho, ghi `completed_at`) phải nằm trong cùng một transaction.
 - `TT-04` "Đã giao" nghĩa là hàng đã tới tay khách. "Hoàn thành" nghĩa là đơn đã chốt, không còn xử lý gì thêm; đây là mốc tính doanh thu và mở quyền đánh giá.
 
@@ -339,13 +341,13 @@ erDiagram
 | `BRANDS` | tên thương hiệu (duy nhất) |
 | `SIZES` | giá trị size (duy nhất) |
 | `COLORS` | tên màu (duy nhất), mã màu hiển thị (tùy chọn) |
-| `PRODUCTS` | tên, slug (duy nhất, không đổi, xem `SP-12`), mô tả, chất liệu, giá bán, giá khuyến mãi (nullable), category, brand, thời điểm xóa mềm (nullable), ngày tạo/sửa |
+| `PRODUCTS` | tên, slug (duy nhất, không đổi, xem `SP-12`), mô tả, chất liệu, giá bán, giá khuyến mãi (nullable), nhãn trang trí (nullable, xem `SP-15`), category, brand, thời điểm xóa mềm (nullable), ngày tạo/sửa |
 | `PRODUCT_IMAGES` | sản phẩm, đường dẫn ảnh, thứ tự (ảnh thứ tự đầu là ảnh chính) |
 | `PRODUCT_VARIANTS` | sản phẩm, size, màu, tồn kho; duy nhất theo (sản phẩm, size, màu) |
 | `CARTS` | khách hàng (mỗi Customer một giỏ); Guest không có bản ghi |
 | `CART_ITEMS` | giỏ, biến thể, số lượng; duy nhất theo (giỏ, biến thể) |
 | `ORDERS` | mã đơn (duy nhất), khách hàng (nullable), snapshot người nhận (tên, điện thoại, tỉnh, huyện, xã, địa chỉ chi tiết), ghi chú, trạng thái, `subtotal`, `shipping_fee`, `grand_total` (công thức ở `DH-05`), thời điểm tạo, `completed_at` |
-| `ORDER_ITEMS` | đơn, biến thể (nullable, chỉ để tham chiếu), **snapshot**: tên sản phẩm, thương hiệu, size, màu, ảnh (đường dẫn, xem `SP-13`), đơn giá, số lượng, `line_total` |
+| `ORDER_ITEMS` | đơn, sản phẩm và biến thể (**đều bắt buộc, không nullable, khóa ngoại `ON DELETE RESTRICT`**), **snapshot**: tên sản phẩm, thương hiệu, size, màu, ảnh (đường dẫn, xem `SP-13`), đơn giá, số lượng, `line_total`; duy nhất theo (đơn, biến thể) |
 | `ORDER_STATUS_HISTORY` | đơn, từ trạng thái, sang trạng thái, người thực hiện (loại + id), ghi chú, thời điểm |
 | `REVIEWS` (P2) | sản phẩm, khách hàng, đơn liên quan, điểm 1-5, nhận xét, đang hiển thị hay ẩn, ngày tạo; duy nhất theo (khách hàng, sản phẩm) |
 
@@ -442,6 +444,7 @@ Những điểm dưới đây do bản v3 tự chốt vì đề bài không nói
 21. Size/màu/thương hiệu/loại đang gắn với sản phẩm đã xóa mềm vẫn không được xóa (`SP-09`).
 22. Ngưỡng rate limit: đăng nhập 5, đăng ký 5, tra cứu đơn 10, tạo đơn 10, còn lại 120 lần/phút/IP (`NF-04`).
 23. Seed data đủ 6 trạng thái đơn; chỉ seed đánh giá khi làm P2 (`DP-03`).
+24. Nhãn trang trí sản phẩm là lựa chọn thủ công của admin, chỉ có "Mới", "Bán chạy", "Nổi bật" hoặc không gắn; P1 không tự tính theo doanh số hay ngày tạo (`SP-15`).
 
 ## 10. Câu hỏi còn mở
 
@@ -471,6 +474,7 @@ Những điểm cần người dùng quyết định. Nếu chưa trả lời, a
 | Phân trang, tìm kiếm, sắp xếp, lọc cho mọi danh sách | UI-01, UI-02 |
 | Admin: đăng nhập | QT-A01 |
 | Admin: quản lý sản phẩm (thêm, sửa, xóa, ảnh, giá, tồn kho) | QT-A02, SP-01 đến SP-11 |
+| Admin: gắn hoặc gỡ nhãn trang trí sản phẩm thủ công | QT-A02, SP-15 |
 | Admin: quản lý danh mục (loại, thương hiệu, size, màu) | QT-A03 |
 | Admin: quản lý khách hàng | QT-A04 |
 | Admin: quản lý đơn hàng và cập nhật 6 trạng thái | QT-A05, mục 5 |

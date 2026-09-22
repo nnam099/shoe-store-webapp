@@ -17,13 +17,14 @@ Tài liệu liên quan:
 | Thành phần | Lựa chọn |
 |---|---|
 | Frontend | React (Vite), HTML, CSS |
+| UI/CSS | Tailwind CSS v4 |
 | Backend | Node.js + Express |
 | Database | PostgreSQL |
 | Xác thực | JWT access token (không refresh token), mật khẩu băm bcrypt hoặc argon2 |
 | Lưu ảnh | Thư mục trên server, gắn Docker volume |
 | Đóng gói | Docker, Docker Compose |
 
-Chưa chốt: thư viện truy cập database (ORM/query builder), thư viện test, thư viện UI/CSS. Khi cần chọn, **đề xuất trong plan kèm lý do và chờ người dùng duyệt**, rồi ghi lựa chọn vào mục này. Không tự cài thư viện lớn khi chưa được duyệt.
+Chưa chốt: thư viện truy cập database (ORM/query builder), thư viện test. Khi cần chọn, **đề xuất trong plan kèm lý do và chờ người dùng duyệt**, rồi ghi lựa chọn vào mục này. Không tự cài thư viện lớn khi chưa được duyệt.
 
 ## 3. Quy trình làm việc bắt buộc
 
