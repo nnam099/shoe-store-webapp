@@ -7,6 +7,9 @@ export const authApi = {
   loginCustomer(input) {
     return apiRequest("/auth/login", { method: "POST", body: input });
   },
+  loginAdmin(input) {
+    return apiRequest("/admin/auth/login", { method: "POST", body: input });
+  },
   getSession(token) {
     return apiRequest("/auth/session", { token });
   },

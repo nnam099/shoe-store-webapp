@@ -96,6 +96,16 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  const loginAdmin = useCallback(async (credentials) => {
+    const result = await authApi.loginAdmin(credentials);
+    setAccessToken(result.accessToken);
+    setToken(result.accessToken);
+    setAccount(result.account);
+    setStatus("authenticated");
+    setSessionError(null);
+    return result.account;
+  }, []);
+
   const updateAccount = useCallback((nextAccount) => {
     setAccount(nextAccount);
   }, []);
@@ -107,10 +117,11 @@ export function AuthProvider({ children }) {
       status,
       sessionError,
       loginCustomer,
+      loginAdmin,
       logout,
       updateAccount,
     }),
-    [token, account, status, sessionError, loginCustomer, logout, updateAccount],
+    [token, account, status, sessionError, loginCustomer, loginAdmin, logout, updateAccount],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
