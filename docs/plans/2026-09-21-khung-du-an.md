@@ -351,7 +351,7 @@ Không cập nhật các mục khác của `AGENTS.md` trong plan này.
   - Test cấu trúc bảng, extension, constraint tiền/tồn kho, order code, FK RESTRICT, deferred image order, slug bất biến, partial/expression/GIN indexes.
   - Chạy backend test + lint.
   - Commit đề xuất: `feat: add approved p1 database schema`.
-- [ ] **Bước 3: Tạo seed P1 idempotent.**
+- [x] **Bước 3: Tạo seed P1 idempotent.**
   - Tạo dữ liệu `DP-03`, hash mật khẩu bằng Argon2id, tạo placeholder upload.
   - Chạy seed hai lần; assert số lượng không tăng, history/tổng tiền/trạng thái hợp lệ và không có bảng/dữ liệu review.
   - Chạy backend test + lint.
