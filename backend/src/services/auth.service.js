@@ -86,5 +86,27 @@ export function createAuthService({ authRepository, accessTokenService }) {
         account: toPublicAccount(customer, "customer"),
       };
     },
+
+    async loginAdmin({ email, password }) {
+      const admin = await authRepository.findAdminCredentialsByEmail(email);
+      const passwordMatches = await verifyPassword(
+        admin?.password_hash ?? DUMMY_PASSWORD_HASH,
+        password,
+      );
+
+      if (!admin || admin.deleted_at !== null || !passwordMatches) {
+        throw invalidCredentialsError();
+      }
+
+      const accessToken = await accessTokenService.signAccessToken({
+        accountId: admin.id,
+        role: "admin",
+      });
+
+      return {
+        accessToken,
+        account: toPublicAccount(admin, "admin"),
+      };
+    },
   };
 }

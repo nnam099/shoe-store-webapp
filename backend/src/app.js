@@ -4,6 +4,7 @@ import helmet from "helmet";
 
 import { env } from "./config/env.js";
 import { createAccountController } from "./controllers/account.controller.js";
+import { createAdminAuthController } from "./controllers/admin-auth.controller.js";
 import { createAuthController } from "./controllers/auth.controller.js";
 import { createCartController } from "./controllers/cart.controller.js";
 import { createHealthController } from "./controllers/health.controller.js";
@@ -35,6 +36,7 @@ export function createApp({
   const authService = createAuthService({ authRepository, accessTokenService });
   const accountService = createAccountService(accountRepository);
   const authController = createAuthController(authService);
+  const adminAuthController = createAdminAuthController(authService);
   const accountController = createAccountController(accountService);
   const cartMergeService = createCartMergeService(cartRepository);
   const cartController = createCartController(cartMergeService);
@@ -58,6 +60,7 @@ export function createApp({
       healthController,
       authController,
       accountController,
+      adminAuthController,
       cartController,
       authenticateAccessToken,
     }),

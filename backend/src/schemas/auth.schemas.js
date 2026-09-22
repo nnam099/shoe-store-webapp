@@ -32,3 +32,15 @@ export const loginSchema = z
     password: z.string().min(1, "Mật khẩu là bắt buộc.").max(128),
   })
   .strict();
+
+export const adminLoginSchema = z
+  .object({
+    email: z
+      .string()
+      .trim()
+      .max(254)
+      .email("Email không đúng định dạng.")
+      .transform((value) => value.toLowerCase()),
+    password: z.string().min(1, "Mật khẩu là bắt buộc.").max(128),
+  })
+  .strict();

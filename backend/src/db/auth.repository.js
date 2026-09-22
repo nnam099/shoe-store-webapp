@@ -22,6 +22,16 @@ export function createAuthRepository(databasePool = pool) {
       return result.rows[0] ?? null;
     },
 
+    async findAdminCredentialsByEmail(email) {
+      const result = await databasePool.query(
+        `SELECT id::text, full_name, email, password_hash, deleted_at
+         FROM admin_accounts
+         WHERE email = $1`,
+        [email],
+      );
+      return result.rows[0] ?? null;
+    },
+
     async findActiveAccountById({ accountId, role }) {
       if (role === "customer") {
         const result = await databasePool.query(
