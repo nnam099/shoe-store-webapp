@@ -344,7 +344,7 @@ Không cập nhật các mục khác của `AGENTS.md` trong plan này.
   - Tạo `GET /api/health` theo đủ lớp và test unit/Supertest.
   - Chạy `npm test` và `npm run lint` trong backend.
   - Commit đề xuất: `feat: scaffold backend health service`.
-- [ ] **Bước 2: Tạo PostgreSQL và migration P1.**
+- [x] **Bước 2: Tạo PostgreSQL và migration P1.**
   - Tạo ba migration theo schema đã duyệt, tuyệt đối không có `reviews`.
   - Bật `pg_trgm`; tạo constraint/index/trigger chính xác.
   - Tạo test database được guard bằng hậu tố `_test`; chạy migration lên database test sạch.

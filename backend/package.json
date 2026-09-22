@@ -10,8 +10,11 @@
     "dev": "node --watch --env-file-if-exists=../.env src/server.js",
     "start": "node --env-file-if-exists=../.env src/server.js",
     "test": "vitest run",
+    "test:integration": "node scripts/prepare-test-database.js && vitest run tests/integration/schema.test.js",
     "test:coverage": "vitest run --coverage",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "migrate": "node-pg-migrate up --migrations-dir migrations --migration-file-language js",
+    "migrate:status": "node-pg-migrate status --migrations-dir migrations --migration-file-language js"
   },
   "dependencies": {
     "argon2": "^0.45.1",
