@@ -1,7 +1,7 @@
 # Kế hoạch: Dựng khung dự án
 
 - Ngày: 2026-09-21
-- Trạng thái: Đang làm — Chặng A hoàn thành
+- Trạng thái: Đang làm — Chặng A hoàn thành, chờ Chặng B
 
 ## Mục tiêu
 
@@ -475,20 +475,20 @@ Không chạy `docker compose down -v` vì lệnh đó xóa dữ liệu volume.
 
 ## Tiêu chí hoàn thành
 
-- [ ] Plan đã được người dùng nói rõ “duyệt plan” trước khi viết code.
+- [x] Plan đã được người dùng nói rõ “duyệt plan” trước khi viết code.
 - [ ] Repo có đúng cấu trúc backend/frontend đã nêu, không có code chết hoặc dependency ngoài plan.
 - [ ] `docker-compose.yml` có đúng ba dịch vụ và hai named volumes; startup order dựa trên healthcheck.
 - [ ] `docker compose up --build` chạy được trên máy sạch bằng default phát triển.
 - [ ] `/api/health` trả 200 và xác nhận PostgreSQL + `pg_trgm` sẵn sàng.
 - [ ] Frontend `/` là trang trắng và production build thành công.
-- [ ] Migration tạo đúng 14 bảng P1, toàn bộ constraint/index/trigger đã duyệt, không có `reviews`.
-- [ ] `order_items` FK NOT NULL/RESTRICT, ảnh có deferred unique, tìm kiếm có GIN `pg_trgm`.
-- [ ] Seed idempotent, đủ dữ liệu `DP-03`, đủ sáu trạng thái, không seed đánh giá.
-- [ ] Password seed được hash Argon2id; không có password/hash/secret thật trong repo hoặc API.
+- [x] Migration tạo đúng 14 bảng P1, toàn bộ constraint/index/trigger đã duyệt, không có `reviews`.
+- [x] `order_items` FK NOT NULL/RESTRICT, ảnh có deferred unique, tìm kiếm có GIN `pg_trgm`.
+- [x] Seed idempotent, đủ dữ liệu `DP-03`, đủ sáu trạng thái, không seed đánh giá.
+- [x] Password seed được hash Argon2id; không có password/hash/secret thật trong repo hoặc API.
 - [ ] Backend test/lint xanh; frontend test/lint/build xanh; test schema/seed xanh trên PostgreSQL thật.
-- [ ] `.env` và upload runtime bị ignore; `.env.example` chỉ có giá trị giả.
+- [x] `.env` và upload runtime bị ignore; `.env.example` chỉ có giá trị giả.
 - [ ] `README.md` và `AGENTS.md` mục 2, 7, 8 phản ánh đúng file/lệnh đã kiểm chứng.
-- [ ] `docker compose down` không xóa volumes; không có thao tác phá hủy dữ liệu trong quá trình làm.
+- [x] `docker compose down` không xóa volumes; không có thao tác phá hủy dữ liệu trong quá trình làm.
 - [ ] Mục “Kết quả sau khi làm” được điền trung thực, gồm test đã chạy và tồn đọng.
 
 ## Câu hỏi cần xác nhận
@@ -507,4 +507,12 @@ Nếu không đồng ý một lựa chọn, đề nghị nêu đúng số mục 
 
 ## Kết quả sau khi làm
 
-Chưa thực hiện. Chờ người dùng duyệt plan.
+### Chặng A — hoàn thành ngày 2026-09-22
+
+- Đã dựng backend Express theo lớp route → controller → service → repository, cấu hình Zod, CORS, Helmet, rate limit, lỗi JSON thống nhất và `GET /api/health` kiểm tra PostgreSQL/`pg_trgm`.
+- Đã tạo ba migration với đúng 14 bảng P1, constraint/index/trigger theo `docs/schema.md`, gồm `products.badge_label`; không tạo `reviews`.
+- Đã tạo seed idempotent: 1 admin, 3 Customer, 20 sản phẩm, 20 ảnh, 40 biến thể, 6 đơn đủ trạng thái Guest/Customer và 17 bản ghi lịch sử; mật khẩu dùng Argon2id.
+- Đã đóng gói backend + PostgreSQL 18 Alpine bằng Docker Compose; backend tự migration/seed, healthcheck xanh và restart không nhân bản dữ liệu. Đã chạy `docker compose down` không kèm `-v`; hai named volume vẫn còn.
+- Kiểm thử đã chạy: 17/17 test backend xanh trên PostgreSQL 18 thật; `npm run lint` sạch; image backend build thành công; health endpoint trả `{ "status": "ok", "database": "ok" }`; Argon2 hoạt động trong container Alpine.
+- Commit Chặng A: `e9110c9`, `d880781`, `3111174`, `ea10569`.
+- Còn lại: toàn bộ Chặng B (frontend, service frontend trong Compose, README/AGENTS cập nhật cuối và kiểm tra tích hợp ba service).
