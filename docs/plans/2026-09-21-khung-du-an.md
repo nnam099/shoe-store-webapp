@@ -1,7 +1,7 @@
 # Kế hoạch: Dựng khung dự án
 
 - Ngày: 2026-09-21
-- Trạng thái: Đang làm — Chặng A hoàn thành, chờ Chặng B
+- Trạng thái: Đang làm — Chặng B
 
 ## Mục tiêu
 
@@ -365,7 +365,7 @@ Không cập nhật các mục khác của `AGENTS.md` trong plan này.
 
 ### Chặng B — Frontend và tích hợp
 
-- [ ] **Bước 5: Khởi tạo frontend trắng có test.**
+- [x] **Bước 5: Khởi tạo frontend trắng có test.**
   - Tạo React/Vite JavaScript ESM, CSS nền trắng, `HomePage` rỗng và không dùng class Tailwind.
   - Cài `tailwindcss` và `@tailwindcss/vite`; thêm plugin `@tailwindcss/vite` vào `vite.config.js` và `@import "tailwindcss";` vào `frontend/src/styles/global.css`, không tạo cấu hình PostCSS riêng.
   - Tạo Vitest/jsdom/React Testing Library và ESLint.
