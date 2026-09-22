@@ -1,7 +1,7 @@
 # Kế hoạch: Dựng khung dự án
 
 - Ngày: 2026-09-21
-- Trạng thái: Đang làm — Chặng B
+- Trạng thái: Hoàn thành ngày 2026-09-22
 
 ## Mục tiêu
 
@@ -377,7 +377,7 @@ Không cập nhật các mục khác của `AGENTS.md` trong plan này.
   - Từ trạng thái sạch, chạy `docker compose up --build`; xác nhận ba container healthy/running, API 200 và trang `/` trắng.
   - Chạy `docker compose down` không thêm `-v` để giữ volumes.
   - Commit đề xuất: `chore: complete three-service docker stack`.
-- [ ] **Bước 7: Cập nhật tài liệu và kiểm tra cuối.**
+- [x] **Bước 7: Cập nhật tài liệu và kiểm tra cuối.**
   - Cập nhật README, `AGENTS.md` mục 2/7/8, tick plan và điền “Kết quả sau khi làm”.
   - Chạy toàn bộ backend test/lint, frontend test/lint/build và lần cuối `docker compose up --build`.
   - Kiểm tra không có `.env`, secret, ảnh upload thật, debug log, TODO vô nghĩa hoặc bảng P2 trong repo/database.
@@ -476,20 +476,20 @@ Không chạy `docker compose down -v` vì lệnh đó xóa dữ liệu volume.
 ## Tiêu chí hoàn thành
 
 - [x] Plan đã được người dùng nói rõ “duyệt plan” trước khi viết code.
-- [ ] Repo có đúng cấu trúc backend/frontend đã nêu, không có code chết hoặc dependency ngoài plan.
-- [ ] `docker-compose.yml` có đúng ba dịch vụ và hai named volumes; startup order dựa trên healthcheck.
-- [ ] `docker compose up --build` chạy được trên máy sạch bằng default phát triển.
-- [ ] `/api/health` trả 200 và xác nhận PostgreSQL + `pg_trgm` sẵn sàng.
-- [ ] Frontend `/` là trang trắng và production build thành công.
+- [x] Repo có đúng cấu trúc backend/frontend đã nêu, không có code chết hoặc dependency ngoài plan.
+- [x] `docker-compose.yml` có đúng ba dịch vụ và hai named volumes; startup order dựa trên healthcheck.
+- [x] `docker compose up --build` chạy được trên máy sạch bằng default phát triển.
+- [x] `/api/health` trả 200 và xác nhận PostgreSQL + `pg_trgm` sẵn sàng.
+- [x] Frontend `/` là trang trắng và production build thành công.
 - [x] Migration tạo đúng 14 bảng P1, toàn bộ constraint/index/trigger đã duyệt, không có `reviews`.
 - [x] `order_items` FK NOT NULL/RESTRICT, ảnh có deferred unique, tìm kiếm có GIN `pg_trgm`.
 - [x] Seed idempotent, đủ dữ liệu `DP-03`, đủ sáu trạng thái, không seed đánh giá.
 - [x] Password seed được hash Argon2id; không có password/hash/secret thật trong repo hoặc API.
-- [ ] Backend test/lint xanh; frontend test/lint/build xanh; test schema/seed xanh trên PostgreSQL thật.
+- [x] Backend test/lint xanh; frontend test/lint/build xanh; test schema/seed xanh trên PostgreSQL thật.
 - [x] `.env` và upload runtime bị ignore; `.env.example` chỉ có giá trị giả.
-- [ ] `README.md` và `AGENTS.md` mục 2, 7, 8 phản ánh đúng file/lệnh đã kiểm chứng.
+- [x] `README.md` và `AGENTS.md` mục 2, 7, 8 phản ánh đúng file/lệnh đã kiểm chứng.
 - [x] `docker compose down` không xóa volumes; không có thao tác phá hủy dữ liệu trong quá trình làm.
-- [ ] Mục “Kết quả sau khi làm” được điền trung thực, gồm test đã chạy và tồn đọng.
+- [x] Mục “Kết quả sau khi làm” được điền trung thực, gồm test đã chạy và tồn đọng.
 
 ## Câu hỏi cần xác nhận
 
@@ -515,4 +515,15 @@ Nếu không đồng ý một lựa chọn, đề nghị nêu đúng số mục 
 - Đã đóng gói backend + PostgreSQL 18 Alpine bằng Docker Compose; backend tự migration/seed, healthcheck xanh và restart không nhân bản dữ liệu. Đã chạy `docker compose down` không kèm `-v`; hai named volume vẫn còn.
 - Kiểm thử đã chạy: 17/17 test backend xanh trên PostgreSQL 18 thật; `npm run lint` sạch; image backend build thành công; health endpoint trả `{ "status": "ok", "database": "ok" }`; Argon2 hoạt động trong container Alpine.
 - Commit Chặng A: `e9110c9`, `d880781`, `3111174`, `ea10569`.
-- Còn lại: toàn bộ Chặng B (frontend, service frontend trong Compose, README/AGENTS cập nhật cuối và kiểm tra tích hợp ba service).
+
+### Chặng B — hoàn thành ngày 2026-09-22
+
+- Đã dựng frontend React/Vite với Tailwind CSS v4 qua `@tailwindcss/vite`; `global.css` import Tailwind nhưng `HomePage` vẫn là `main` rỗng, nền trắng và chưa dùng class Tailwind.
+- Đã thêm Vitest/jsdom/React Testing Library, ESLint, multi-stage Dockerfile và Nginx production config có health endpoint `/healthz`.
+- Đã hoàn thiện Compose đúng ba service `frontend`, `backend`, `db`; cả ba healthy, frontend `/` trả 200, `/healthz` trả 204 và backend `/api/health` trả `{ "status": "ok", "database": "ok" }`.
+- Đã cập nhật README và `AGENTS.md` mục 2, 7, 8 theo stack, cấu trúc và lệnh thực tế. Đã bỏ script `migrate:status` không hợp lệ vì phiên bản `node-pg-migrate` đang dùng không có action `status`.
+- Kiểm thử cuối: backend 17/17 test xanh, test seed riêng 4/4 xanh trên PostgreSQL 18 thật, lint sạch, coverage chạy thành công; frontend 2/2 test xanh, lint sạch, production build và coverage chạy thành công.
+- Kiểm tra tích hợp cuối xác nhận `pg_trgm`, đúng 14 bảng P1, 20 sản phẩm, 6 đơn, 17 lịch sử trạng thái, 3 migration và không có bảng `reviews`. Audit không thấy `.env` bị track, upload thật, `console.log`, TODO/FIXME trong code ứng dụng hoặc secret thật.
+- Đã chạy `docker compose down` không kèm `-v`; hai named volume `postgres_data` và `uploaded_images` vẫn còn. Container PostgreSQL test tạm đã được dừng và tự xóa.
+- Commit Chặng B trước bước tài liệu cuối: `8474286`, `5ddf386`.
+- Tồn đọng: không có trong phạm vi plan; các màn hình và chức năng nghiệp vụ sẽ thuộc plan riêng sau này.

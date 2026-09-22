@@ -1,1 +1,65 @@
-# lap_trinh_web
+# SẢI — Website bán giày trực tuyến
+
+Khung dự án cho website thương mại điện tử bán giày của đồ án Lập trình web PTIT. Hệ thống hiện có frontend React/Vite, backend Express và PostgreSQL; trang chủ được giữ trắng để sẵn sàng phát triển giao diện ở plan tiếp theo.
+
+## Yêu cầu
+
+- Docker Desktop có Docker Compose, hoặc Node.js 24 và PostgreSQL 18 nếu chạy từng phần ở máy host.
+- Các cổng mặc định còn trống: frontend `5173`, backend `3000`.
+
+## Chạy nhanh bằng Docker
+
+Không bắt buộc tạo `.env` để chạy local; Compose có sẵn giá trị phát triển giả. Nếu muốn đổi cổng hoặc cấu hình, sao chép `.env.example` thành `.env` và chỉ dùng thông tin local:
+
+```powershell
+Copy-Item .env.example .env
+docker compose up --build
+```
+
+Sau khi ba container healthy:
+
+- Frontend: <http://localhost:5173> (trang trắng theo phạm vi hiện tại)
+- Health API: <http://localhost:3000/api/health>
+
+Backend tự chạy migration và seed idempotent khi `RUN_SEED=true`. Dừng hệ thống mà vẫn giữ dữ liệu:
+
+```powershell
+docker compose down
+```
+
+Không thêm `-v` nếu muốn giữ hai volume `postgres_data` và `uploaded_images`.
+
+## Chạy và kiểm thử cục bộ
+
+```powershell
+# Backend
+Set-Location backend
+npm ci
+npm run dev
+npm test
+npm run lint
+
+# Frontend
+Set-Location ../frontend
+npm ci
+npm run dev
+npm test
+npm run lint
+npm run build
+```
+
+Các lệnh migration cần `DATABASE_URL`. Test tích hợp cần một PostgreSQL riêng và `TEST_DATABASE_URL` phải trỏ đến database có tên kết thúc bằng `_test`; script sẽ từ chối reset database không có hậu tố này.
+
+```powershell
+Set-Location backend
+$env:TEST_DATABASE_URL = "postgres://shoe_store:dev_only_change_me@localhost:5432/shoe_store_test"
+npm run test:integration
+npm run test:seed
+```
+
+## Tài liệu
+
+- Nghiệp vụ: `docs/nghiep-vu.md`
+- Schema đã duyệt: `docs/schema.md`
+- Plan khung dự án: `docs/plans/2026-09-21-khung-du-an.md`
+- Quy tắc làm việc: `AGENTS.md`

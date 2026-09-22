@@ -16,15 +16,16 @@ Tài liệu liên quan:
 
 | Thành phần | Lựa chọn |
 |---|---|
-| Frontend | React (Vite), HTML, CSS |
-| UI/CSS | Tailwind CSS v4 |
-| Backend | Node.js + Express |
-| Database | PostgreSQL |
-| Xác thực | JWT access token (không refresh token), mật khẩu băm bcrypt hoặc argon2 |
+| Frontend | React + Vite, JavaScript ESM, HTML |
+| UI/CSS | Tailwind CSS v4 qua `@tailwindcss/vite` (không cấu hình PostCSS riêng) |
+| Backend | Node.js 24 + Express |
+| Database | PostgreSQL 18 Alpine |
+| Truy cập database | `pg` + `node-pg-migrate`; migration nâng cao dùng SQL thuần |
+| Kiểm tra dữ liệu | Zod |
+| Xác thực | JWT access token (không refresh token), mật khẩu băm Argon2id |
+| Kiểm thử | Backend: Vitest + Supertest; frontend: Vitest + React Testing Library + jsdom |
 | Lưu ảnh | Thư mục trên server, gắn Docker volume |
 | Đóng gói | Docker, Docker Compose |
-
-Chưa chốt: thư viện truy cập database (ORM/query builder), thư viện test. Khi cần chọn, **đề xuất trong plan kèm lý do và chờ người dùng duyệt**, rồi ghi lựa chọn vào mục này. Không tự cài thư viện lớn khi chưa được duyệt.
 
 ## 3. Quy trình làm việc bắt buộc
 
@@ -90,32 +91,35 @@ Sửa lỗi chính tả, đổi chữ hoặc màu, chỉnh CSS nhỏ, đổi tê
 - Không để lại code chết, `console.log` gỡ lỗi, hoặc TODO không kèm giải thích.
 - Ưu tiên giải pháp đơn giản, ít dependency. Đây là đồ án: đừng thiết kế quá mức (microservice, cache phân tán, hàng đợi...).
 
-## 7. Cấu trúc thư mục dự kiến
+## 7. Cấu trúc thư mục
 
 ```
-shoe-shop/
+shoe-store-webapp/
 ├── AGENTS.md
-├── docker-compose.yml
 ├── .env.example
+├── docker-compose.yml
+├── README.md
 ├── docs/
 │   ├── nghiep-vu.md
 │   ├── schema.md
 │   └── plans/
 ├── backend/
-│   ├── src/ (routes, controllers, services, db, middlewares, utils)
+│   ├── Dockerfile
 │   ├── migrations/
+│   ├── scripts/
 │   ├── seeds/
-│   ├── tests/
+│   ├── src/ (config, controllers, db, middlewares, routes, services)
+│   ├── tests/ (unit, integration)
 │   └── uploads/            (gắn volume, không commit ảnh thật)
 └── frontend/
-    └── src/ (pages, components, api, hooks, styles)
+    ├── Dockerfile
+    ├── nginx.conf
+    └── src/ (pages, styles, tests)
 ```
-
-Khi khung dự án được dựng, cập nhật lại mục này cho khớp thực tế.
 
 ## 8. Lệnh thường dùng
 
-> Các lệnh dưới đây là **dự kiến**. Sau khi dựng khung dự án, agent phải cập nhật mục này cho đúng với thực tế và xác nhận từng lệnh chạy được.
+> Các lệnh dưới đây đã được xác nhận với khung dự án. Các lệnh database chạy ngoài Docker cần `DATABASE_URL`; test tích hợp cần `TEST_DATABASE_URL` trỏ tới database có tên kết thúc bằng `_test`.
 
 ```bash
 # Chạy toàn hệ thống (frontend, backend, database)
@@ -126,16 +130,25 @@ docker compose down
 
 # Backend
 cd backend
-npm run dev          # chạy dev
-npm test             # chạy test
-npm run lint         # kiểm tra lint
-npm run migrate      # chạy migration
-npm run seed         # nạp dữ liệu mẫu (chạy lặp lại không tạo trùng)
+npm ci
+npm run dev               # chạy development
+npm start                 # chạy production
+npm test                  # toàn bộ test
+npm run test:coverage
+npm run test:integration  # reset an toàn DB *_test rồi kiểm tra schema
+npm run test:seed         # reset an toàn DB *_test rồi kiểm tra seed hai lần
+npm run lint
+npm run migrate
+npm run seed              # nạp dữ liệu mẫu, chạy lặp lại không tạo trùng
 
 # Frontend
 cd frontend
+npm ci
 npm run dev
 npm run build
+npm run preview
+npm test
+npm run test:coverage
 npm run lint
 ```
 

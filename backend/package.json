@@ -15,7 +15,6 @@
     "test:coverage": "vitest run --coverage",
     "lint": "eslint .",
     "migrate": "node-pg-migrate up --migrations-dir migrations --migration-file-language js",
-    "migrate:status": "node-pg-migrate status --migrations-dir migrations --migration-file-language js",
     "seed": "node --env-file-if-exists=../.env seeds/seed.js"
   },
   "dependencies": {
