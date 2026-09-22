@@ -1,7 +1,7 @@
 # Kế hoạch: Dựng khung dự án
 
 - Ngày: 2026-09-21
-- Trạng thái: Đang làm — Chặng A
+- Trạng thái: Đang làm — Chặng A hoàn thành
 
 ## Mục tiêu
 
@@ -356,7 +356,7 @@ Không cập nhật các mục khác của `AGENTS.md` trong plan này.
   - Chạy seed hai lần; assert số lượng không tăng, history/tổng tiền/trạng thái hợp lệ và không có bảng/dữ liệu review.
   - Chạy backend test + lint.
   - Commit đề xuất: `feat: add idempotent development seed`.
-- [ ] **Bước 4: Đóng gói backend + database bằng Docker Compose.**
+- [x] **Bước 4: Đóng gói backend + database bằng Docker Compose.**
   - Tạo backend Dockerfile và hai service `db`, `backend` trong compose.
   - Thêm healthcheck, migration/seed startup và hai named volumes.
   - Xác nhận backend chỉ khởi động sau khi DB healthy.

@@ -1,0 +1,59 @@
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-shoe_store}
+      POSTGRES_USER: ${POSTGRES_USER:-shoe_store}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev_only_change_me}
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-shoe_store}:${POSTGRES_PASSWORD:-dev_only_change_me}@db:5432/${POSTGRES_DB:-shoe_store}
+      BACKEND_PORT: 3000
+      FRONTEND_PORT: ${FRONTEND_PORT:-5173}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+      SHIPPING_FEE_VND: ${SHIPPING_FEE_VND:-30000}
+      RUN_SEED: ${RUN_SEED:-true}
+      ADMIN_SEED_EMAIL: ${ADMIN_SEED_EMAIL:-admin@example.com}
+      ADMIN_SEED_PASSWORD: ${ADMIN_SEED_PASSWORD:-development_only_password}
+      UPLOAD_DIR: /app/uploads
+      RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-60000}
+      RATE_LIMIT_LOGIN_MAX: ${RATE_LIMIT_LOGIN_MAX:-5}
+      RATE_LIMIT_REGISTER_MAX: ${RATE_LIMIT_REGISTER_MAX:-5}
+      RATE_LIMIT_GUEST_ORDER_LOOKUP_MAX: ${RATE_LIMIT_GUEST_ORDER_LOOKUP_MAX:-10}
+      RATE_LIMIT_CREATE_ORDER_MAX: ${RATE_LIMIT_CREATE_ORDER_MAX:-10}
+      RATE_LIMIT_GENERAL_MAX: ${RATE_LIMIT_GENERAL_MAX:-120}
+    ports:
+      - "${BACKEND_PORT:-3000}:3000"
+    volumes:
+      - uploaded_images:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/api/health').then((response) => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1));",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+volumes:
+  postgres_data:
+  uploaded_images:
