@@ -108,13 +108,13 @@ shoe-store-webapp/
 │   ├── migrations/
 │   ├── scripts/
 │   ├── seeds/
-│   ├── src/ (config, controllers, db, middlewares, routes, services)
+│   ├── src/ (config, controllers, db, middlewares, routes, schemas, services, utils)
 │   ├── tests/ (unit, integration)
 │   └── uploads/            (gắn volume, không commit ảnh thật)
 └── frontend/
     ├── Dockerfile
     ├── nginx.conf
-    └── src/ (pages, styles, tests)
+    └── src/ (api, auth, cart, components, hooks, pages, routes, styles, tests)
 ```
 
 ## 8. Lệnh thường dùng

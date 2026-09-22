@@ -20,6 +20,9 @@ Sau khi ba container healthy:
 
 - Frontend: <http://localhost:5173> (trang trắng theo phạm vi hiện tại)
 - Health API: <http://localhost:3000/api/health>
+- Đăng ký Customer: <http://localhost:5173/dang-ky>
+- Đăng nhập Customer: <http://localhost:5173/dang-nhap>
+- Đăng nhập Admin: <http://localhost:5173/admin/dang-nhap>
 
 Backend tự chạy migration và seed idempotent khi `RUN_SEED=true`. Dừng hệ thống mà vẫn giữ dữ liệu:
 
@@ -28,6 +31,34 @@ docker compose down
 ```
 
 Không thêm `-v` nếu muốn giữ hai volume `postgres_data` và `uploaded_images`.
+
+## Tài khoản mẫu local
+
+Khi `RUN_SEED=true`, seed tạo các tài khoản chỉ dùng cho môi trường phát triển:
+
+| Vai trò | Tài khoản | Mật khẩu mặc định local |
+|---|---|---|
+| Customer | `minh.anh@example.com` hoặc `0900000001` | `Customer123!` |
+| Admin | Giá trị `ADMIN_SEED_EMAIL` (`admin@example.com` mặc định) | Giá trị `ADMIN_SEED_PASSWORD` (`development_only_password` mặc định) |
+
+Hãy đổi `JWT_SECRET`, mật khẩu database và mật khẩu Admin khi chạy ngoài máy phát triển. Không commit file `.env`.
+
+## API xác thực
+
+| Method | Endpoint | Quyền |
+|---|---|---|
+| `POST` | `/api/auth/register` | Guest |
+| `POST` | `/api/auth/login` | Guest/Customer |
+| `GET` | `/api/auth/session` | Customer hoặc Admin |
+| `POST` | `/api/cart/merge` | Customer |
+| `GET`, `PATCH` | `/api/account/profile` | Customer |
+| `PUT` | `/api/account/password` | Customer |
+| `POST` | `/api/admin/auth/login` | Guest/Admin |
+| `GET` | `/api/admin` | Admin |
+
+Customer dùng access token 24 giờ; Admin dùng access token 8 giờ. Frontend lưu token trong `localStorage`, gửi qua `Authorization: Bearer <token>` và đăng xuất bằng cách xóa token phía client. Không có refresh token.
+
+Các biến cấu hình liên quan gồm `JWT_SECRET` (tối thiểu 32 ký tự), `VITE_API_BASE_URL`, `CORS_ORIGIN`, `RATE_LIMIT_LOGIN_MAX` và `RATE_LIMIT_REGISTER_MAX`; xem đầy đủ trong `.env.example`.
 
 ## Chạy và kiểm thử cục bộ
 
