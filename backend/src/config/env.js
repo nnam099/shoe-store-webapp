@@ -29,6 +29,7 @@ const envSchema = z.object({
     .default("postgres://shoe_store:dev_only_change_me@localhost:5432/shoe_store"),
   TEST_DATABASE_URL: z.string().url().optional(),
   CORS_ORIGIN: z.string().url().default("http://localhost:5173"),
+  JWT_SECRET: z.string().min(32).default("development_only_jwt_secret_change_me"),
   SHIPPING_FEE_VND: z.coerce.number().int().nonnegative().default(30000),
   RUN_SEED: booleanFromString.default(true),
   ADMIN_SEED_EMAIL: z.string().email().default("admin@example.com"),

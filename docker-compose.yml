@@ -23,6 +23,7 @@ services:
       BACKEND_PORT: 3000
       FRONTEND_PORT: ${FRONTEND_PORT:-5173}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+      JWT_SECRET: ${JWT_SECRET:-development_only_jwt_secret_change_me}
       SHIPPING_FEE_VND: ${SHIPPING_FEE_VND:-30000}
       RUN_SEED: ${RUN_SEED:-true}
       ADMIN_SEED_EMAIL: ${ADMIN_SEED_EMAIL:-admin@example.com}

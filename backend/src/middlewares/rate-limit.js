@@ -2,10 +2,10 @@ import { rateLimit } from "express-rate-limit";
 
 import { env } from "../config/env.js";
 
-export function createGeneralRateLimiter() {
+function createRateLimiter(limit) {
   return rateLimit({
     windowMs: env.RATE_LIMIT_WINDOW_MS,
-    limit: env.RATE_LIMIT_GENERAL_MAX,
+    limit,
     standardHeaders: "draft-8",
     legacyHeaders: false,
     handler(_request, response) {
@@ -17,4 +17,16 @@ export function createGeneralRateLimiter() {
       });
     },
   });
+}
+
+export function createGeneralRateLimiter(limit = env.RATE_LIMIT_GENERAL_MAX) {
+  return createRateLimiter(limit);
+}
+
+export function createLoginRateLimiter(limit = env.RATE_LIMIT_LOGIN_MAX) {
+  return createRateLimiter(limit);
+}
+
+export function createRegisterRateLimiter(limit = env.RATE_LIMIT_REGISTER_MAX) {
+  return createRateLimiter(limit);
 }

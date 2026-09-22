@@ -10,6 +10,7 @@ describe("parseEnv", () => {
     expect(result.SHIPPING_FEE_VND).toBe(30000);
     expect(result.RUN_SEED).toBe(true);
     expect(result.RATE_LIMIT_GENERAL_MAX).toBe(120);
+    expect(result.JWT_SECRET.length).toBeGreaterThanOrEqual(32);
   });
 
   it("coerces supported environment values", () => {
@@ -30,5 +31,7 @@ describe("parseEnv", () => {
         BACKEND_PORT: "70000",
       }),
     ).toThrow();
+
+    expect(() => parseEnv({ JWT_SECRET: "too-short" })).toThrow();
   });
 });

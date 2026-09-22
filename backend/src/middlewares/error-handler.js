@@ -8,10 +8,11 @@ export function errorHandler(error, _request, response, _next) {
         ? "Dịch vụ tạm thời không khả dụng."
         : "Đã xảy ra lỗi hệ thống.";
 
-  response.status(statusCode).json({
-    error: {
-      code,
-      message,
-    },
-  });
+  const publicError = { code, message };
+
+  if (statusCode < 500 && error.fields && typeof error.fields === "object") {
+    publicError.fields = error.fields;
+  }
+
+  response.status(statusCode).json({ error: publicError });
 }

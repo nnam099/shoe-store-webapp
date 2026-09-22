@@ -16,13 +16,13 @@ Tài liệu liên quan:
 
 | Thành phần | Lựa chọn |
 |---|---|
-| Frontend | React + Vite, JavaScript ESM, HTML |
+| Frontend | React + Vite, JavaScript ESM, HTML; routing bằng `react-router` Declarative Mode |
 | UI/CSS | Tailwind CSS v4 qua `@tailwindcss/vite` (không cấu hình PostCSS riêng) |
 | Backend | Node.js 24 + Express |
 | Database | PostgreSQL 18 Alpine |
 | Truy cập database | `pg` + `node-pg-migrate`; migration nâng cao dùng SQL thuần |
 | Kiểm tra dữ liệu | Zod |
-| Xác thực | JWT access token (không refresh token), mật khẩu băm Argon2id |
+| Xác thực | JWT access token bằng `jose` (không refresh token), mật khẩu băm Argon2id |
 | Kiểm thử | Backend: Vitest + Supertest; frontend: Vitest + React Testing Library + jsdom |
 | Lưu ảnh | Thư mục trên server, gắn Docker volume |
 | Đóng gói | Docker, Docker Compose |
