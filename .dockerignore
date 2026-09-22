@@ -1,0 +1,10 @@
+.git
+.gitignore
+.env
+**/node_modules
+**/dist
+**/coverage
+backend/uploads/*
+!backend/uploads/.gitkeep
+design-reference-source
+*.log

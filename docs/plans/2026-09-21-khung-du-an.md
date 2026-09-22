@@ -337,7 +337,7 @@ Không cập nhật các mục khác của `AGENTS.md` trong plan này.
 
 ### Chặng A — Docker, backend và database
 
-- [ ] **Bước 1: Khởi tạo cấu hình gốc và backend tối thiểu.**
+- [x] **Bước 1: Khởi tạo cấu hình gốc và backend tối thiểu.**
   - Tạo `.gitignore`, `.dockerignore`, `.env.example`, backend package/ESLint/Vitest.
   - Cài đúng dependency đã duyệt và commit lockfile.
   - Tạo config env bằng Zod, Express app/server, middleware lỗi/CORS/rate limit.
