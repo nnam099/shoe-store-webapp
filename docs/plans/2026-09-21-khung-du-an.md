@@ -371,7 +371,7 @@ Không cập nhật các mục khác của `AGENTS.md` trong plan này.
   - Tạo Vitest/jsdom/React Testing Library và ESLint.
   - Chạy `npm test`, `npm run lint`, `npm run build` trong frontend.
   - Commit đề xuất: `feat: scaffold blank react frontend`.
-- [ ] **Bước 6: Đóng gói frontend và hoàn thiện đúng ba dịch vụ.**
+- [x] **Bước 6: Đóng gói frontend và hoàn thiện đúng ba dịch vụ.**
   - Tạo multi-stage frontend Dockerfile và Nginx config.
   - Hoàn thiện service `frontend`; compose chỉ có đúng `frontend`, `backend`, `db`.
   - Từ trạng thái sạch, chạy `docker compose up --build`; xác nhận ba container healthy/running, API 200 và trang `/` trắng.
