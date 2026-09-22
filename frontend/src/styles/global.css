@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+@theme {
+  --color-cobalt: oklch(0.55 0.25 264);
+  --color-cobalt-deep: oklch(0.48 0.22 264);
+  --color-coral: oklch(0.68 0.21 34);
+  --color-mint: oklch(0.72 0.15 170);
+  --color-amber: oklch(0.81 0.17 77);
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
 html,
 body,
 #root,
@@ -14,4 +24,11 @@ body {
 
 main {
   min-height: 100vh;
+}
+
+.bg-auth {
+  background:
+    radial-gradient(circle at 15% 20%, oklch(0.75 0.12 264 / 35%), transparent 34%),
+    radial-gradient(circle at 85% 80%, oklch(0.78 0.1 170 / 28%), transparent 34%),
+    oklch(0.95 0.018 245);
 }
