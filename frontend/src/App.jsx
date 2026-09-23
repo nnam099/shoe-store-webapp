@@ -13,6 +13,7 @@ import { AdminProductListPage } from "./pages/admin/AdminProductListPage.jsx";
 import { AdminLayout } from "./components/admin/AdminLayout.jsx";
 import { StorefrontLayout } from "./components/storefront/StorefrontLayout.jsx";
 import { HomePage } from "./pages/HomePage.jsx";
+import { CartPage } from "./pages/cart/CartPage.jsx";
 import { ProductListPage } from "./pages/products/ProductListPage.jsx";
 import { ProductDetailPage } from "./pages/products/ProductDetailPage.jsx";
 import { ProtectedRoute } from "./routes/ProtectedRoute.jsx";
@@ -20,10 +21,11 @@ import { ProtectedRoute } from "./routes/ProtectedRoute.jsx";
 export function App() {
   return (
     <Routes>
-      <Route path="/" element={<HomePage />} />
       <Route element={<StorefrontLayout />}>
+        <Route index element={<HomePage />} />
         <Route path="/san-pham" element={<ProductListPage />} />
         <Route path="/san-pham/:slug" element={<ProductDetailPage />} />
+        <Route path="/gio-hang" element={<CartPage />} />
       </Route>
       <Route path="/dang-ky" element={<RegisterPage />} />
       <Route path="/dang-nhap" element={<LoginPage />} />

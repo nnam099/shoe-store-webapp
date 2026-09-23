@@ -1,6 +1,6 @@
 # SẢI — Website bán giày trực tuyến
 
-Website thương mại điện tử bán giày của đồ án Lập trình web PTIT. Hệ thống dùng frontend React/Vite, backend Express và PostgreSQL; hiện đã có xác thực Customer/Admin, quản lý sản phẩm Admin và luồng công khai xem danh sách/chi tiết sản phẩm.
+Website thương mại điện tử bán giày của đồ án Lập trình web PTIT. Hệ thống dùng frontend React/Vite, backend Express và PostgreSQL; hiện đã có xác thực Customer/Admin, quản lý sản phẩm Admin, luồng công khai xem sản phẩm và giỏ hàng Guest/Customer.
 
 ## Yêu cầu
 
@@ -18,8 +18,9 @@ docker compose up --build
 
 Sau khi ba container healthy:
 
-- Frontend: <http://localhost:5173>
+- Trang chủ công khai: <http://localhost:5173>
 - Danh sách sản phẩm công khai: <http://localhost:5173/san-pham>
+- Giỏ hàng: <http://localhost:5173/gio-hang>
 - Health API: <http://localhost:3000/api/health>
 - Đăng ký Customer: <http://localhost:5173/dang-ky>
 - Đăng nhập Customer: <http://localhost:5173/dang-nhap>
@@ -53,8 +54,6 @@ Hãy đổi `JWT_SECRET`, mật khẩu database và mật khẩu Admin khi chạ
 | `POST` | `/api/auth/register` | Guest |
 | `POST` | `/api/auth/login` | Guest/Customer |
 | `GET` | `/api/auth/session` | Customer hoặc Admin |
-| `POST` | `/api/cart/merge` | Customer |
-| `POST` | `/api/cart/items` | Customer |
 | `GET`, `PATCH` | `/api/account/profile` | Customer |
 | `PUT` | `/api/account/password` | Customer |
 | `POST` | `/api/admin/auth/login` | Guest/Admin |
@@ -77,6 +76,23 @@ Ba endpoint xem sản phẩm không yêu cầu access token:
 Danh sách nhận các query `q`, `brandId`, `categoryId`, `sizeId`, `colorId`, `minPrice`, `maxPrice`, `sort`, `page`. Các khóa ID có thể lặp; giá trị cùng nhóm kết hợp OR, các nhóm kết hợp AND, còn size và màu phải khớp cùng một biến thể còn hàng. `sort` nhận `newest`, `price_asc`, `price_desc`, `name_asc`.
 
 Response danh sách chỉ có `inStock`; không trả số lượng tồn chính xác. Số tồn theo biến thể chỉ có ở API chi tiết. Guest thêm giỏ trong `localStorage`; Customer dùng `POST /api/cart/items` với Bearer token.
+
+Trang chủ dùng lại `GET /api/products/options` cho shortcut danh mục và trang đầu của `GET /api/products?sort=newest&page=1` cho dải tối đa 12 sản phẩm mới nhất; không có endpoint riêng cho trang chủ.
+
+## API giỏ hàng
+
+Trang `/gio-hang` dùng được khi chưa đăng nhập. Guest chỉ lưu `productVariantId` và `quantity` trong `localStorage`; khi hiển thị, frontend luôn gọi backend để lấy lại giá hiệu lực, tồn kho và trạng thái xóa mềm hiện hành. Customer lưu giỏ trong PostgreSQL và mọi thao tác đọc/ghi đều dùng Bearer token.
+
+| Method | Endpoint | Quyền và nội dung |
+|---|---|---|
+| `POST` | `/api/cart/validate` | Công khai; kiểm tra tối đa 100 dòng Guest, chỉ đọc database |
+| `POST` | `/api/cart/merge` | Customer; gộp giỏ Guest sau đăng nhập |
+| `GET` | `/api/cart` | Customer; đọc giỏ của tài khoản trong token |
+| `POST` | `/api/cart/items` | Customer; thêm/cộng dồn một biến thể |
+| `PATCH` | `/api/cart/items/:productVariantId` | Customer; đặt số lượng cuối cùng của dòng |
+| `DELETE` | `/api/cart/items/:productVariantId` | Customer; xóa dòng, idempotent |
+
+Response giỏ trả `unitPrice`, `lineTotal`, `subtotal`, `totalQuantity` và trạng thái từng dòng: `available`, `insufficient_stock`, `out_of_stock`, `not_for_sale`. `subtotal` chỉ cộng dòng đang khả dụng. Giỏ không giữ chỗ hay trừ tồn kho; checkout sẽ kiểm tra lại ở chức năng sau.
 
 ## API quản lý sản phẩm Admin
 
@@ -129,4 +145,6 @@ npm run test:seed
 - Schema đã duyệt: `docs/schema.md`
 - Plan khung dự án: `docs/plans/2026-09-21-khung-du-an.md`
 - Plan khách xem sản phẩm: `docs/plans/2026-09-24-khach-xem-san-pham.md`
+- Plan giỏ hàng: `docs/plans/2026-09-25-gio-hang.md`
+- Plan trang chủ: `docs/plans/2026-09-26-trang-chu.md`
 - Quy tắc làm việc: `AGENTS.md`

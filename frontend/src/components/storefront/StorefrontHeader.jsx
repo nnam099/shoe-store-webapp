@@ -1,6 +1,7 @@
 import { Link, NavLink } from "react-router";
 
 import { useAuth } from "../../auth/useAuth.js";
+import { useCartCount } from "../../hooks/useCartCount.js";
 
 const navClass = ({ isActive }) =>
   `rounded-lg px-3 py-2 text-sm font-semibold transition ${
@@ -9,6 +10,7 @@ const navClass = ({ isActive }) =>
 
 export function StorefrontHeader() {
   const { account, status } = useAuth();
+  const cartCount = useCartCount();
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-background/85 backdrop-blur-xl">
@@ -31,7 +33,20 @@ export function StorefrontHeader() {
               Đăng nhập
             </Link>
           )}
-          <span className="rounded-lg bg-ink px-4 py-2 text-sm font-bold text-white">Giỏ hàng</span>
+          <Link
+            to="/gio-hang"
+            className="relative rounded-lg bg-ink px-4 py-2 text-sm font-bold text-white transition hover:bg-cobalt focus:outline-none focus-visible:ring-2 focus-visible:ring-cobalt focus-visible:ring-offset-2"
+          >
+            Giỏ hàng
+            {cartCount !== null ? (
+              <span
+                className="ml-2 inline-grid min-w-5 place-items-center rounded-full bg-coral px-1.5 py-0.5 font-mono text-[0.65rem] leading-none text-white"
+                aria-label={`${cartCount} sản phẩm trong giỏ`}
+              >
+                {cartCount}
+              </span>
+            ) : null}
+          </Link>
         </div>
       </div>
     </header>

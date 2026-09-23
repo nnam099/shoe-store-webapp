@@ -1,4 +1,33 @@
 export const GUEST_CART_KEY = "sai_guest_cart";
+export const CART_UPDATED_EVENT = "sai:cart-updated";
+
+const MAX_QUANTITY = 2147483647;
+const MAX_BIGINT_ID = 9223372036854775807n;
+
+function isValidProductVariantId(value) {
+  const normalized = String(value);
+  return /^[1-9][0-9]*$/.test(normalized) && BigInt(normalized) <= MAX_BIGINT_ID;
+}
+
+function isValidQuantity(value) {
+  return Number.isInteger(value) && value > 0 && value <= MAX_QUANTITY;
+}
+
+export function notifyCartUpdated() {
+  if (typeof globalThis.dispatchEvent === "function") {
+    globalThis.dispatchEvent(new CustomEvent(CART_UPDATED_EVENT));
+  }
+}
+
+function writeGuestCartItems(items) {
+  try {
+    localStorage.setItem(GUEST_CART_KEY, JSON.stringify(items));
+    notifyCartUpdated();
+    return { saved: true, items };
+  } catch {
+    return { saved: false, reason: "storage_error" };
+  }
+}
 
 export function getGuestCartItems() {
   try {
@@ -10,15 +39,12 @@ export function getGuestCartItems() {
 
     const quantities = new Map();
     for (const item of value) {
-      if (
-        item &&
-        (typeof item.productVariantId === "string" ||
-          (typeof item.productVariantId === "number" && Number.isSafeInteger(item.productVariantId))) &&
-        Number.isInteger(item.quantity) &&
-        item.quantity > 0
-      ) {
+      if (item && isValidProductVariantId(item.productVariantId) && isValidQuantity(item.quantity)) {
         const productVariantId = String(item.productVariantId);
-        quantities.set(productVariantId, (quantities.get(productVariantId) ?? 0) + item.quantity);
+        const total = (quantities.get(productVariantId) ?? 0) + item.quantity;
+        if (total <= MAX_QUANTITY) {
+          quantities.set(productVariantId, total);
+        }
       }
     }
     return [...quantities].map(([productVariantId, quantity]) => ({ productVariantId, quantity }));
@@ -29,9 +55,8 @@ export function getGuestCartItems() {
 
 export function addGuestCartItem({ productVariantId, quantity, stockQuantity }) {
   if (
-    !/^[1-9][0-9]*$/.test(String(productVariantId)) ||
-    !Number.isInteger(quantity) ||
-    quantity <= 0 ||
+    !isValidProductVariantId(productVariantId) ||
+    !isValidQuantity(quantity) ||
     !Number.isInteger(stockQuantity) ||
     stockQuantity < 0
   ) {
@@ -58,15 +83,62 @@ export function addGuestCartItem({ productVariantId, quantity, stockQuantity }) 
       )
     : [...items, { productVariantId: normalizedId, quantity }];
 
-  try {
-    localStorage.setItem(GUEST_CART_KEY, JSON.stringify(nextItems));
-  } catch {
+  const saved = writeGuestCartItems(nextItems);
+  if (!saved.saved) {
     return { added: false, reason: "storage_error" };
   }
 
   return { added: true, quantity: finalQuantity, items: nextItems };
 }
 
+export function updateGuestCartItem({ productVariantId, quantity }) {
+  if (!isValidProductVariantId(productVariantId) || !isValidQuantity(quantity)) {
+    return { updated: false, reason: "invalid" };
+  }
+
+  const normalizedId = String(productVariantId);
+  const items = getGuestCartItems();
+  if (!items.some((item) => item.productVariantId === normalizedId)) {
+    return { updated: false, reason: "not_found" };
+  }
+
+  const nextItems = items.map((item) =>
+    item.productVariantId === normalizedId ? { ...item, quantity } : item,
+  );
+  const saved = writeGuestCartItems(nextItems);
+  return saved.saved
+    ? { updated: true, quantity, items: nextItems }
+    : { updated: false, reason: saved.reason };
+}
+
+export function capGuestCartItem({ productVariantId, stockQuantity }) {
+  return updateGuestCartItem({ productVariantId, quantity: stockQuantity });
+}
+
+export function removeGuestCartItem(productVariantId) {
+  if (!isValidProductVariantId(productVariantId)) {
+    return { removed: false, reason: "invalid" };
+  }
+
+  const normalizedId = String(productVariantId);
+  const items = getGuestCartItems();
+  const nextItems = items.filter((item) => item.productVariantId !== normalizedId);
+  if (nextItems.length === items.length) {
+    return { removed: true, items };
+  }
+
+  const saved = writeGuestCartItems(nextItems);
+  return saved.saved
+    ? { removed: true, items: nextItems }
+    : { removed: false, reason: saved.reason };
+}
+
 export function clearGuestCart() {
-  localStorage.removeItem(GUEST_CART_KEY);
+  try {
+    localStorage.removeItem(GUEST_CART_KEY);
+    notifyCartUpdated();
+    return true;
+  } catch {
+    return false;
+  }
 }

@@ -30,6 +30,7 @@ import { createAdminCatalogService } from "./services/admin-catalog.service.js";
 import { createAdminProductService } from "./services/admin-product.service.js";
 import { createCartMergeService } from "./services/cart-merge.service.js";
 import { createCartItemService } from "./services/cart-item.service.js";
+import { createCartManagementService } from "./services/cart-management.service.js";
 import { createHealthService } from "./services/health.service.js";
 import { createProductService } from "./services/product.service.js";
 import { tokenService } from "./utils/jwt.js";
@@ -61,7 +62,12 @@ export function createApp({
   const accountController = createAccountController(accountService);
   const cartMergeService = createCartMergeService(cartRepository);
   const cartItemService = createCartItemService(cartRepository);
-  const cartController = createCartController(cartMergeService, cartItemService);
+  const cartManagementService = createCartManagementService(cartRepository);
+  const cartController = createCartController(
+    cartMergeService,
+    cartItemService,
+    cartManagementService,
+  );
   const authenticateAccessToken = createAuthenticateAccessToken({
     authRepository,
     accessTokenService,

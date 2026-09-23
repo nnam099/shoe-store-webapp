@@ -5,7 +5,8 @@ const productVariantId = z
     z.string().regex(/^[1-9][0-9]*$/, "Mã biến thể không hợp lệ."),
     z.number().int().positive().safe(),
   ])
-  .transform((value) => String(value));
+  .transform((value) => String(value))
+  .refine((value) => BigInt(value) <= 9223372036854775807n, "Mã biến thể không hợp lệ.");
 
 const quantity = z.number().int().positive().max(2147483647);
 
@@ -28,6 +29,33 @@ export const mergeCartSchema = z
 export const addCartItemSchema = z
   .object({
     productVariantId,
+    quantity,
+  })
+  .strict();
+
+export const validateCartSchema = z
+  .object({
+    items: z
+      .array(
+        z
+          .object({
+            productVariantId,
+            quantity,
+          })
+          .strict(),
+      )
+      .max(100, "Giỏ hàng có quá nhiều dòng."),
+  })
+  .strict();
+
+export const cartItemParamsSchema = z
+  .object({
+    productVariantId,
+  })
+  .strict();
+
+export const updateCartItemSchema = z
+  .object({
     quantity,
   })
   .strict();
