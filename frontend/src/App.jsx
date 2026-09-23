@@ -6,6 +6,11 @@ import { LoginPage } from "./pages/auth/LoginPage.jsx";
 import { RegisterPage } from "./pages/auth/RegisterPage.jsx";
 import { AdminHomePage } from "./pages/admin/AdminHomePage.jsx";
 import { AdminLoginPage } from "./pages/admin/AdminLoginPage.jsx";
+import { AdminCatalogPage } from "./pages/admin/AdminCatalogPage.jsx";
+import { AdminProductCreatePage } from "./pages/admin/AdminProductCreatePage.jsx";
+import { AdminProductEditPage } from "./pages/admin/AdminProductEditPage.jsx";
+import { AdminProductListPage } from "./pages/admin/AdminProductListPage.jsx";
+import { AdminLayout } from "./components/admin/AdminLayout.jsx";
 import { HomePage } from "./pages/HomePage.jsx";
 import { ProtectedRoute } from "./routes/ProtectedRoute.jsx";
 
@@ -21,7 +26,13 @@ export function App() {
         <Route path="/tai-khoan/doi-mat-khau" element={<ChangePasswordPage />} />
       </Route>
       <Route element={<ProtectedRoute allowedRole="admin" loginPath="/admin/dang-nhap" />}>
-        <Route path="/admin" element={<AdminHomePage />} />
+        <Route element={<AdminLayout />}>
+          <Route path="/admin" element={<AdminHomePage />} />
+          <Route path="/admin/danh-muc" element={<AdminCatalogPage />} />
+          <Route path="/admin/san-pham" element={<AdminProductListPage />} />
+          <Route path="/admin/san-pham/them" element={<AdminProductCreatePage />} />
+          <Route path="/admin/san-pham/:productId" element={<AdminProductEditPage />} />
+        </Route>
       </Route>
     </Routes>
   );

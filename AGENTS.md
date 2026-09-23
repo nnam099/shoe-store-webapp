@@ -24,6 +24,7 @@ Tài liệu liên quan:
 | Kiểm tra dữ liệu | Zod |
 | Xác thực | JWT access token bằng `jose` (không refresh token), mật khẩu băm Argon2id |
 | Kiểm thử | Backend: Vitest + Supertest; frontend: Vitest + React Testing Library + jsdom |
+| Upload ảnh | `multer` memory storage + `file-type` kiểm tra magic bytes |
 | Lưu ảnh | Thư mục trên server, gắn Docker volume |
 | Đóng gói | Docker, Docker Compose |
 
@@ -33,9 +34,10 @@ Tài liệu liên quan:
 1. **Không viết code ngay.** Đọc `docs/nghiep-vu.md`, `docs/schema.md` và phần code liên quan trước.
 2. Tạo file kế hoạch `docs/plans/YYYY-MM-DD-ten-chuc-nang.md` theo `docs/plans/_template.md`. Plan phải nêu: mục tiêu, phạm vi (làm / không làm), mã quy tắc nghiệp vụ liên quan, ảnh hưởng database, danh sách file sẽ tạo/sửa, các bước, rủi ro bảo mật, cách kiểm thử, câu hỏi cần xác nhận.
 3. **Dừng lại, chờ người dùng nói "duyệt plan".** Không code trước khi có câu này.
-4. Khi code: làm theo từng bước trong plan, tick checkbox khi xong, chạy test cuối mỗi bước.
-5. Nếu phát sinh việc ngoài plan, cập nhật plan và báo người dùng trước khi làm tiếp.
-6. Xong thì điền mục "Kết quả sau khi làm" trong plan: đã làm gì, đã test gì, còn tồn đọng gì. Sau đó dừng và báo cáo, không tự chuyển sang chức năng khác.
+4. Sau khi plan đã được duyệt, trong lúc thực thi các bước đã có trong plan, không cần hỏi lại người dùng cho từng hành động, bao gồm: chạy lệnh Docker không phá hủy dữ liệu, cài đặt dependency đã được liệt kê và duyệt trong plan, chạy test/lint, và commit theo từng bước. Chỉ dừng lại hỏi khi: (a) phát sinh việc ngoài phạm vi plan; (b) cần chạy lệnh phá hủy dữ liệu như xóa volume, drop database hoặc `git push --force`; (c) gặp lỗi không thể tự giải quyết.
+5. Khi code: làm theo từng bước trong plan, tick checkbox khi xong, chạy test cuối mỗi bước.
+6. Nếu phát sinh việc ngoài plan, cập nhật plan và báo người dùng trước khi làm tiếp.
+7. Xong thì điền mục "Kết quả sau khi làm" trong plan: đã làm gì, đã test gì, còn tồn đọng gì. Sau đó dừng và báo cáo, không tự chuyển sang chức năng khác.
 
 ### 3.2 Việc được bỏ qua plan
 Sửa lỗi chính tả, đổi chữ hoặc màu, chỉnh CSS nhỏ, đổi tên biến, sửa lỗi rõ ràng trong một file. Nếu việc chạm tới database, tiền, tồn kho, xác thực, phân quyền hoặc trạng thái đơn thì **luôn cần plan**, dù nhỏ.

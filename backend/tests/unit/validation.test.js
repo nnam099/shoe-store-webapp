@@ -1,10 +1,13 @@
 import express from "express";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 
 import { errorHandler } from "../../src/middlewares/error-handler.js";
 import { validate } from "../../src/middlewares/validate.js";
 import { registerSchema } from "../../src/schemas/auth.schemas.js";
+
+const querySchema = z.object({ fullName: z.string().trim().min(1) }).strict();
 
 function createValidationApp() {
   const app = express();
@@ -12,6 +15,13 @@ function createValidationApp() {
   app.post("/register", validate(registerSchema), (httpRequest, response) => {
     response.status(200).json(httpRequest.body);
   });
+  app.get(
+    "/query",
+    validate(querySchema, "query"),
+    (httpRequest, response) => {
+      response.status(200).json(httpRequest.validated.query);
+    },
+  );
   app.use(errorHandler);
   return app;
 }
@@ -52,5 +62,12 @@ describe("request validation", () => {
       }),
     );
     expect(response.body).not.toHaveProperty("stack");
+  });
+
+  it("stores validated query data without assigning the read-only Express query property", async () => {
+    const response = await request(createValidationApp()).get("/query").query({ fullName: "  An  " });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ fullName: "An" });
   });
 });

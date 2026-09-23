@@ -1,0 +1,91 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@theme inline {
+  --font-sans: "Space Grotesk", system-ui, sans-serif;
+  --font-display: "Space Grotesk", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-line: var(--line);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-frost: var(--frost);
+  --color-ice: var(--ice);
+  --color-cobalt: var(--cobalt);
+  --color-cobalt-deep: var(--cobalt-deep);
+  --color-coral: var(--coral);
+  --color-mint: var(--mint);
+  --color-amber: var(--amber);
+  --color-amber-strong: var(--amber-strong);
+  --color-surface: var(--surface);
+  --color-surface-glass: var(--surface-glass);
+  --color-surface-glass-strong: var(--surface-glass-strong);
+  --color-footer: var(--footer);
+}
+
+:root {
+  --background: oklch(0.95 0.018 245);
+  --foreground: oklch(0.19 0.025 260);
+  --primary: oklch(0.55 0.25 264);
+  --primary-foreground: oklch(1 0 0);
+  --muted: oklch(0.91 0.014 250);
+  --muted-foreground: oklch(0.48 0.025 252);
+  --border: oklch(0.28 0.025 260 / 16%);
+  --line: oklch(0.28 0.025 260 / 16%);
+  --input: oklch(0.28 0.025 260 / 18%);
+  --ring: oklch(0.55 0.25 264);
+  --ink: oklch(0.19 0.025 260);
+  --ink-soft: oklch(0.25 0.03 260);
+  --frost: oklch(0.95 0.018 245);
+  --ice: oklch(0.88 0.035 240);
+  --cobalt: oklch(0.56 0.25 264);
+  --cobalt-deep: oklch(0.48 0.22 264);
+  --coral: oklch(0.68 0.21 34);
+  --mint: oklch(0.72 0.15 170);
+  --amber: oklch(0.81 0.17 77);
+  --amber-strong: oklch(0.58 0.14 70);
+  --surface: oklch(1 0 0);
+  --surface-glass: oklch(1 0 0 / 58%);
+  --surface-glass-strong: oklch(1 0 0 / 78%);
+  --footer: oklch(0.14 0.02 260);
+}
+
+@layer base {
+  * { border-color: var(--border); }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--background); color: var(--foreground); letter-spacing: 0; }
+  button, a, input, select, textarea { letter-spacing: 0; }
+  button, a { cursor: pointer; }
+}
+
+@utility bg-shop {
+  background: radial-gradient(120% 120% at 15% -10%, oklch(1 0 0) 0%, var(--frost) 38%, oklch(0.91 0.027 245) 72%, oklch(0.88 0.04 245) 100%);
+}
+
+@utility bg-admin { background: oklch(0.965 0.01 248); }
+@utility page-wrap { width: min(100% - 2rem, 1200px); margin-inline: auto; padding-block: 3rem 4rem; }
+@utility page-heading {
+  margin-bottom: 2rem;
+  & h1 { margin-top: .4rem; font-family: var(--font-display); font-size: clamp(2rem, 4vw, 3.5rem); font-weight: 700; line-height: 1; }
+  & p:last-child { margin-top: .75rem; color: var(--muted-foreground); }
+}
+@utility eyebrow { font-family: var(--font-mono); font-size: .7rem; text-transform: uppercase; color: var(--cobalt); }
+@utility filter-title { margin-bottom: .5rem; font-family: var(--font-mono); font-size: .68rem; text-transform: uppercase; color: var(--muted-foreground); }
+@utility filter-input { width: 100%; border: 1px solid var(--line); border-radius: .5rem; background: var(--surface-glass); padding: .5rem; font-size: .75rem; outline: none; }
+@utility field-label { margin-bottom: .4rem; display: block; font-size: .78rem; font-weight: 600; }
+@utility field-input { width: 100%; border: 1px solid var(--line); border-radius: .5rem; background: var(--surface-glass-strong); padding: .7rem .8rem; font-size: .875rem; outline: none; &:focus { border-color: var(--cobalt); box-shadow: 0 0 0 3px oklch(0.56 0.25 264 / 12%); } }
+@utility rise { animation: rise .6s cubic-bezier(.32,.72,0,1) both; }
+@utility sheen { position: relative; overflow: hidden; &::after { content: ""; position: absolute; inset: 0; width: 40%; background: linear-gradient(90deg, transparent, oklch(1 0 0 / 35%), transparent); animation: sheen 3.4s ease-in-out infinite; } }
+
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes sheen { from { transform: translateX(-120%) skewX(-18deg); } to { transform: translateX(220%) skewX(-18deg); } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }

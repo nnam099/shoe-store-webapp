@@ -23,6 +23,8 @@ Sau khi ba container healthy:
 - Đăng ký Customer: <http://localhost:5173/dang-ky>
 - Đăng nhập Customer: <http://localhost:5173/dang-nhap>
 - Đăng nhập Admin: <http://localhost:5173/admin/dang-nhap>
+- Quản lý sản phẩm Admin: <http://localhost:5173/admin/san-pham>
+- Quản lý danh mục/thuộc tính Admin: <http://localhost:5173/admin/danh-muc>
 
 Backend tự chạy migration và seed idempotent khi `RUN_SEED=true`. Dừng hệ thống mà vẫn giữ dữ liệu:
 
@@ -59,6 +61,21 @@ Hãy đổi `JWT_SECRET`, mật khẩu database và mật khẩu Admin khi chạ
 Customer dùng access token 24 giờ; Admin dùng access token 8 giờ. Frontend lưu token trong `localStorage`, gửi qua `Authorization: Bearer <token>` và đăng xuất bằng cách xóa token phía client. Không có refresh token.
 
 Các biến cấu hình liên quan gồm `JWT_SECRET` (tối thiểu 32 ký tự), `VITE_API_BASE_URL`, `CORS_ORIGIN`, `RATE_LIMIT_LOGIN_MAX` và `RATE_LIMIT_REGISTER_MAX`; xem đầy đủ trong `.env.example`.
+
+## API quản lý sản phẩm Admin
+
+Tất cả endpoint dưới `/api/admin/products` và `/api/admin/catalog` đều yêu cầu access token Admin qua `Authorization: Bearer <token>`.
+
+| Nhóm | Method và endpoint |
+|---|---|
+| Danh sách/tạo sản phẩm | `GET /api/admin/products`, `POST /api/admin/products` |
+| Lựa chọn cho form | `GET /api/admin/products/options` |
+| Chi tiết/sửa/xóa mềm | `GET /api/admin/products/:productId`, `PATCH /api/admin/products/:productId`, `DELETE /api/admin/products/:productId` |
+| Ảnh | `POST /api/admin/products/:productId/images`, `PUT /api/admin/products/:productId/images/order`, `DELETE /api/admin/products/:productId/images/:imageId` |
+| Biến thể | `POST /api/admin/products/:productId/variants`, `PATCH /api/admin/products/:productId/variants/:variantId`, `DELETE /api/admin/products/:productId/variants/:variantId` |
+| Loại/thương hiệu/size/màu | `GET /api/admin/catalog/:resource`, `POST /api/admin/catalog/:resource`, `PATCH /api/admin/catalog/:resource/:id`, `DELETE /api/admin/catalog/:resource/:id` |
+
+Request tạo sản phẩm dùng `multipart/form-data`: trường `data` chứa JSON metadata và trường `images` chứa 1–8 ảnh. Upload thêm ảnh cũng dùng trường `images`. Backend chỉ nhận JPG, PNG hoặc WebP theo magic bytes, tối đa 5 MiB mỗi file và 8 file mỗi request; tên file được sinh ngẫu nhiên. URL ảnh công khai nằm dưới `/uploads`, còn file được giữ trong Docker volume `uploaded_images`, kể cả khi bản ghi ảnh hoặc sản phẩm bị xóa mềm.
 
 ## Chạy và kiểm thử cục bộ
 

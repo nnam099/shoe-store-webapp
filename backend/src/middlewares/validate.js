@@ -1,6 +1,6 @@
 import { AppError } from "../errors/app-error.js";
 
-function mapValidationFields(issues) {
+export function mapValidationFields(issues) {
   const fields = {};
 
   for (const issue of issues) {
@@ -30,7 +30,12 @@ export function validate(schema, target = "body") {
       return;
     }
 
-    request[target] = result.data;
+    request.validated = request.validated ?? {};
+    request.validated[target] = result.data;
+
+    if (target === "body") {
+      request.body = result.data;
+    }
     next();
   };
 }

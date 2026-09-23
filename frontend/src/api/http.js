@@ -12,8 +12,9 @@ export class ApiError extends Error {
 
 export async function apiRequest(path, { method = "GET", body, token } = {}) {
   const headers = { Accept: "application/json" };
+  const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
 
-  if (body !== undefined) {
+  if (body !== undefined && !isFormData) {
     headers["Content-Type"] = "application/json";
   }
   if (token) {
@@ -23,7 +24,7 @@ export async function apiRequest(path, { method = "GET", body, token } = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
     headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: body === undefined ? undefined : isFormData ? body : JSON.stringify(body),
   });
   const payload = await response.json().catch(() => ({}));
 
@@ -37,4 +38,10 @@ export async function apiRequest(path, { method = "GET", body, token } = {}) {
   }
 
   return payload;
+}
+
+export function resolveApiAssetUrl(path) {
+  if (!path) return null;
+  const apiUrl = new URL(API_BASE_URL, globalThis.location?.origin ?? "http://localhost");
+  return new URL(path, apiUrl.origin).toString();
 }

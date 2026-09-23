@@ -11,6 +11,8 @@ export function createApiRouter({
   authController,
   accountController,
   adminAuthController,
+  adminCatalogController,
+  adminProductController,
   cartController,
   authenticateAccessToken,
 }) {
@@ -20,7 +22,15 @@ export function createApiRouter({
   router.use("/auth", createAuthRouter({ authController, authenticateAccessToken }));
   router.use("/account", createAccountRouter({ accountController, authenticateAccessToken }));
   router.use("/cart", createCartRouter({ cartController, authenticateAccessToken }));
-  router.use("/admin", createAdminRouter({ adminAuthController, authenticateAccessToken }));
+  router.use(
+    "/admin",
+    createAdminRouter({
+      adminAuthController,
+      adminCatalogController,
+      adminProductController,
+      authenticateAccessToken,
+    }),
+  );
 
   return router;
 }
