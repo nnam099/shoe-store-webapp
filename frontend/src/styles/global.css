@@ -6,6 +6,13 @@
   --color-coral: oklch(0.68 0.21 34);
   --color-mint: oklch(0.72 0.15 170);
   --color-amber: oklch(0.81 0.17 77);
+  --color-background: oklch(0.95 0.018 245);
+  --color-foreground: oklch(0.19 0.025 260);
+  --color-ink: oklch(0.19 0.025 260);
+  --color-muted: oklch(0.48 0.025 252);
+  --color-line: oklch(0.28 0.025 260 / 16%);
+  --color-surface: oklch(1 0 0);
+  --color-surface-glass: oklch(1 0 0 / 58%);
   --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
@@ -20,6 +27,7 @@ main {
 body {
   margin: 0;
   background: #fff;
+  color: oklch(0.19 0.025 260);
 }
 
 main {

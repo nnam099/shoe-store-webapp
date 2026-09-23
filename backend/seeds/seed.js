@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { env } from "../src/config/env.js";
 import { pool } from "../src/db/pool.js";
 import { withTransaction } from "../src/db/transaction.js";
+import { createSlugBase } from "../src/utils/product-slug.js";
 import {
   brands,
   categories,
@@ -129,6 +130,7 @@ async function upsertProducts(client, lookupIds) {
   const seededProducts = [];
 
   for (const product of products) {
+    const slug = createSlugBase(product.name);
     const productResult = await client.query(
       `INSERT INTO products
         (category_id, brand_id, name, search_name, slug, description, material,
@@ -152,7 +154,7 @@ async function upsertProducts(client, lookupIds) {
         lookupIds.brands.get(product.brandName),
         product.name,
         product.searchName,
-        product.slug,
+        slug,
         product.description,
         product.material,
         product.price,
@@ -198,6 +200,7 @@ async function upsertProducts(client, lookupIds) {
 
     seededProducts.push({
       ...product,
+      slug,
       id: productId,
       variants,
     });

@@ -4,7 +4,9 @@ import { join } from "node:path";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { products } from "../../seeds/data.js";
 import { seedDatabase } from "../../seeds/seed.js";
+import { createSlugBase } from "../../src/utils/product-slug.js";
 
 const { Pool } = pg;
 const databaseUrl = process.env.TEST_DATABASE_URL;
@@ -73,6 +75,26 @@ describeDatabase("development seed", () => {
       histories: 17,
     });
     expect(secondCounts).toEqual(firstCounts);
+  });
+
+  it("generates product slugs from names with the shared slug utility", async () => {
+    const result = await pool.query(
+      `SELECT name, slug
+       FROM products
+       WHERE name = ANY($1::text[])
+       ORDER BY name`,
+      [products.map((product) => product.name)],
+    );
+    const slugsByName = new Map(result.rows.map((product) => [product.name, product.slug]));
+
+    expect(result.rows).toHaveLength(products.length);
+    expect(slugsByName.get("Sải Tempo")).toBe("sai-tempo");
+    expect(slugsByName.get("Sải City Walk")).toBe("sai-city-walk");
+    expect(new Set(result.rows.map((product) => product.slug)).size).toBe(products.length);
+
+    for (const product of products) {
+      expect(slugsByName.get(product.name)).toBe(createSlugBase(product.name));
+    }
   });
 
   it("creates Guest and Customer orders in all six statuses", async () => {

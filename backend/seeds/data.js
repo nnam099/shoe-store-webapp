@@ -40,7 +40,6 @@ const badgeLabels = ["new", "bestseller", "featured", null];
 export const products = productNames.map((name, index) => ({
   name,
   searchName: name.toLocaleLowerCase("vi-VN").normalize("NFD").replace(/[\u0300-\u036f]/g, ""),
-  slug: `sai-${String(index + 1).padStart(2, "0")}`,
   description: `Mẫu giày ${name} dành cho dữ liệu phát triển.`,
   material: index % 2 === 0 ? "Vải dệt và cao su" : "Da tổng hợp và cao su",
   price: 850000 + index * 50000,

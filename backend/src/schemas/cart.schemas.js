@@ -7,6 +7,8 @@ const productVariantId = z
   ])
   .transform((value) => String(value));
 
+const quantity = z.number().int().positive().max(2147483647);
+
 export const mergeCartSchema = z
   .object({
     items: z
@@ -14,11 +16,18 @@ export const mergeCartSchema = z
         z
           .object({
             productVariantId,
-            quantity: z.number().int().positive().max(2147483647),
+            quantity,
           })
           .strict(),
       )
       .min(1, "Giỏ local phải có ít nhất một dòng.")
       .max(100, "Giỏ local có quá nhiều dòng."),
+  })
+  .strict();
+
+export const addCartItemSchema = z
+  .object({
+    productVariantId,
+    quantity,
   })
   .strict();

@@ -1,6 +1,6 @@
 # SẢI — Website bán giày trực tuyến
 
-Khung dự án cho website thương mại điện tử bán giày của đồ án Lập trình web PTIT. Hệ thống hiện có frontend React/Vite, backend Express và PostgreSQL; trang chủ được giữ trắng để sẵn sàng phát triển giao diện ở plan tiếp theo.
+Website thương mại điện tử bán giày của đồ án Lập trình web PTIT. Hệ thống dùng frontend React/Vite, backend Express và PostgreSQL; hiện đã có xác thực Customer/Admin, quản lý sản phẩm Admin và luồng công khai xem danh sách/chi tiết sản phẩm.
 
 ## Yêu cầu
 
@@ -18,7 +18,8 @@ docker compose up --build
 
 Sau khi ba container healthy:
 
-- Frontend: <http://localhost:5173> (trang trắng theo phạm vi hiện tại)
+- Frontend: <http://localhost:5173>
+- Danh sách sản phẩm công khai: <http://localhost:5173/san-pham>
 - Health API: <http://localhost:3000/api/health>
 - Đăng ký Customer: <http://localhost:5173/dang-ky>
 - Đăng nhập Customer: <http://localhost:5173/dang-nhap>
@@ -53,6 +54,7 @@ Hãy đổi `JWT_SECRET`, mật khẩu database và mật khẩu Admin khi chạ
 | `POST` | `/api/auth/login` | Guest/Customer |
 | `GET` | `/api/auth/session` | Customer hoặc Admin |
 | `POST` | `/api/cart/merge` | Customer |
+| `POST` | `/api/cart/items` | Customer |
 | `GET`, `PATCH` | `/api/account/profile` | Customer |
 | `PUT` | `/api/account/password` | Customer |
 | `POST` | `/api/admin/auth/login` | Guest/Admin |
@@ -61,6 +63,20 @@ Hãy đổi `JWT_SECRET`, mật khẩu database và mật khẩu Admin khi chạ
 Customer dùng access token 24 giờ; Admin dùng access token 8 giờ. Frontend lưu token trong `localStorage`, gửi qua `Authorization: Bearer <token>` và đăng xuất bằng cách xóa token phía client. Không có refresh token.
 
 Các biến cấu hình liên quan gồm `JWT_SECRET` (tối thiểu 32 ký tự), `VITE_API_BASE_URL`, `CORS_ORIGIN`, `RATE_LIMIT_LOGIN_MAX` và `RATE_LIMIT_REGISTER_MAX`; xem đầy đủ trong `.env.example`.
+
+## API sản phẩm công khai
+
+Ba endpoint xem sản phẩm không yêu cầu access token:
+
+| Method | Endpoint | Nội dung |
+|---|---|---|
+| `GET` | `/api/products` | Tìm kiếm, lọc, sắp xếp và phân trang 12 sản phẩm/trang |
+| `GET` | `/api/products/options` | Thương hiệu, loại, size và màu dùng cho bộ lọc |
+| `GET` | `/api/products/:slug` | Chi tiết, thư viện ảnh và tồn kho theo biến thể |
+
+Danh sách nhận các query `q`, `brandId`, `categoryId`, `sizeId`, `colorId`, `minPrice`, `maxPrice`, `sort`, `page`. Các khóa ID có thể lặp; giá trị cùng nhóm kết hợp OR, các nhóm kết hợp AND, còn size và màu phải khớp cùng một biến thể còn hàng. `sort` nhận `newest`, `price_asc`, `price_desc`, `name_asc`.
+
+Response danh sách chỉ có `inStock`; không trả số lượng tồn chính xác. Số tồn theo biến thể chỉ có ở API chi tiết. Guest thêm giỏ trong `localStorage`; Customer dùng `POST /api/cart/items` với Bearer token.
 
 ## API quản lý sản phẩm Admin
 
@@ -85,6 +101,7 @@ Set-Location backend
 npm ci
 npm run dev
 npm test
+npm run test:coverage
 npm run lint
 
 # Frontend
@@ -92,6 +109,7 @@ Set-Location ../frontend
 npm ci
 npm run dev
 npm test
+npm run test:coverage
 npm run lint
 npm run build
 ```
@@ -110,4 +128,5 @@ npm run test:seed
 - Nghiệp vụ: `docs/nghiep-vu.md`
 - Schema đã duyệt: `docs/schema.md`
 - Plan khung dự án: `docs/plans/2026-09-21-khung-du-an.md`
+- Plan khách xem sản phẩm: `docs/plans/2026-09-24-khach-xem-san-pham.md`
 - Quy tắc làm việc: `AGENTS.md`

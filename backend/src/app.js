@@ -11,12 +11,14 @@ import { createAdminProductController } from "./controllers/admin-product.contro
 import { createAuthController } from "./controllers/auth.controller.js";
 import { createCartController } from "./controllers/cart.controller.js";
 import { createHealthController } from "./controllers/health.controller.js";
+import { createProductController } from "./controllers/product.controller.js";
 import { createAuthRepository } from "./db/auth.repository.js";
 import { createAccountRepository } from "./db/account.repository.js";
 import { createAdminCatalogRepository } from "./db/admin-catalog.repository.js";
 import { createAdminProductRepository } from "./db/admin-product.repository.js";
 import { createCartRepository } from "./db/cart.repository.js";
 import { createHealthRepository } from "./db/health.repository.js";
+import { createProductRepository } from "./db/product.repository.js";
 import { createAuthenticateAccessToken } from "./middlewares/authenticate.js";
 import { errorHandler } from "./middlewares/error-handler.js";
 import { notFoundHandler } from "./middlewares/not-found.js";
@@ -27,7 +29,9 @@ import { createAccountService } from "./services/account.service.js";
 import { createAdminCatalogService } from "./services/admin-catalog.service.js";
 import { createAdminProductService } from "./services/admin-product.service.js";
 import { createCartMergeService } from "./services/cart-merge.service.js";
+import { createCartItemService } from "./services/cart-item.service.js";
 import { createHealthService } from "./services/health.service.js";
+import { createProductService } from "./services/product.service.js";
 import { tokenService } from "./utils/jwt.js";
 
 export function createApp({
@@ -37,12 +41,15 @@ export function createApp({
   adminCatalogRepository = createAdminCatalogRepository(),
   adminProductRepository = createAdminProductRepository(),
   cartRepository = createCartRepository(),
+  productRepository = createProductRepository(),
   accessTokenService = tokenService,
   uploadDirectory = env.UPLOAD_DIR,
 } = {}) {
   const app = express();
   const healthService = createHealthService(healthRepository);
   const healthController = createHealthController(healthService);
+  const productService = createProductService(productRepository);
+  const productController = createProductController(productService);
   const authService = createAuthService({ authRepository, accessTokenService });
   const accountService = createAccountService(accountRepository);
   const authController = createAuthController(authService);
@@ -53,7 +60,8 @@ export function createApp({
   const adminProductController = createAdminProductController(adminProductService);
   const accountController = createAccountController(accountService);
   const cartMergeService = createCartMergeService(cartRepository);
-  const cartController = createCartController(cartMergeService);
+  const cartItemService = createCartItemService(cartRepository);
+  const cartController = createCartController(cartMergeService, cartItemService);
   const authenticateAccessToken = createAuthenticateAccessToken({
     authRepository,
     accessTokenService,
@@ -91,6 +99,7 @@ export function createApp({
       adminCatalogController,
       adminProductController,
       cartController,
+      productController,
       authenticateAccessToken,
     }),
   );

@@ -11,13 +11,20 @@ import { AdminProductCreatePage } from "./pages/admin/AdminProductCreatePage.jsx
 import { AdminProductEditPage } from "./pages/admin/AdminProductEditPage.jsx";
 import { AdminProductListPage } from "./pages/admin/AdminProductListPage.jsx";
 import { AdminLayout } from "./components/admin/AdminLayout.jsx";
+import { StorefrontLayout } from "./components/storefront/StorefrontLayout.jsx";
 import { HomePage } from "./pages/HomePage.jsx";
+import { ProductListPage } from "./pages/products/ProductListPage.jsx";
+import { ProductDetailPage } from "./pages/products/ProductDetailPage.jsx";
 import { ProtectedRoute } from "./routes/ProtectedRoute.jsx";
 
 export function App() {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
+      <Route element={<StorefrontLayout />}>
+        <Route path="/san-pham" element={<ProductListPage />} />
+        <Route path="/san-pham/:slug" element={<ProductDetailPage />} />
+      </Route>
       <Route path="/dang-ky" element={<RegisterPage />} />
       <Route path="/dang-nhap" element={<LoginPage />} />
       <Route path="/admin/dang-nhap" element={<AdminLoginPage />} />
