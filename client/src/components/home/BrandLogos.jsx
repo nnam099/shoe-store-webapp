@@ -2,58 +2,43 @@ import { siteConfig, getAssetUrl } from '../../config/site';
 
 export default function BrandLogos() {
   const brands = siteConfig.brands;
+  // Repeat list to create a seamless infinite loop track (-50% translation)
+  const marqueeItems = [...brands, ...brands, ...brands, ...brands];
 
   return (
-    <section id="brands" className="py-12 sm:py-16 lg:py-20 bg-[#f8f8f6] border-b border-[#e6e6e2]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Section Header */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 sm:mb-12 border-b border-[#e6e6e2] pb-5">
-          <div className="space-y-1">
-            <div className="inline-flex items-center gap-2">
-              <span className="w-1.5 h-1.5 bg-[#991b1b]" />
-              <span className="font-mono text-[11px] font-semibold uppercase tracking-widest text-[#991b1b]">
-                AUTHENTIC LINEUP
-              </span>
+    <section
+      id="brands"
+      className="relative w-full overflow-hidden bg-[#f8f8f6] border-y border-[#e6e6e2] py-8 sm:py-12 lg:py-16 select-none"
+      aria-label="Thương hiệu đối tác"
+    >
+      {/* Edge gradient fade masks for high-end editorial vignette */}
+      <div
+        className="pointer-events-none absolute left-0 top-0 bottom-0 w-16 sm:w-28 lg:w-40 bg-gradient-to-r from-[#f8f8f6] via-[#f8f8f6]/80 to-transparent z-10"
+        aria-hidden="true"
+      />
+      <div
+        className="pointer-events-none absolute right-0 top-0 bottom-0 w-16 sm:w-28 lg:w-40 bg-gradient-to-l from-[#f8f8f6] via-[#f8f8f6]/80 to-transparent z-10"
+        aria-hidden="true"
+      />
+
+      {/* Infinite scrolling marquee track */}
+      <div className="flex animate-marquee items-center">
+        {marqueeItems.map((brand, index) => (
+          <div
+            key={`${brand.id}-${index}`}
+            className="shrink-0 px-6 sm:px-10 lg:px-14 flex items-center justify-center transition-transform duration-300 hover:scale-105"
+            aria-hidden={index >= brands.length ? 'true' : undefined}
+          >
+            <div className="h-12 sm:h-16 lg:h-20 w-32 sm:w-44 lg:w-52 flex items-center justify-center">
+              <img
+                src={getAssetUrl(brand.logo)}
+                alt={`${brand.name} logo`}
+                className="max-h-full max-w-full w-auto h-auto object-contain opacity-80 hover:opacity-100 transition-opacity duration-200"
+                loading="lazy"
+              />
             </div>
-            <h2 className="font-['Space_Grotesk'] text-2xl sm:text-3xl font-extrabold uppercase tracking-tight text-[#121212]">
-              Thương hiệu tuyển chọn
-            </h2>
           </div>
-
-          <p className="mt-2 sm:mt-0 text-xs sm:text-sm text-neutral-500 font-mono tracking-wider">
-            05 BRANDS • FOOTWEAR
-          </p>
-        </div>
-
-        {/* Brand Strip Grid / Mobile Horizontal Scroll */}
-        <div className="overflow-x-auto no-scrollbar snap-x snap-mandatory -mx-4 px-4 sm:mx-0 sm:px-0">
-          <div className="flex sm:grid sm:grid-cols-5 gap-4 min-w-max sm:min-w-0">
-            {brands.map((brand) => (
-              <div
-                key={brand.id}
-                className="group relative flex flex-col items-center justify-center p-6 sm:p-8 bg-white border border-[#e6e6e2] hover:border-[#121212] transition-colors duration-200 snap-center w-[160px] sm:w-auto shrink-0 select-none"
-              >
-                {/* Logo Container */}
-                <div className="h-12 sm:h-14 w-full flex items-center justify-center">
-                  <img
-                    src={getAssetUrl(brand.logo)}
-                    alt={`${brand.name} logo`}
-                    className="max-h-full max-w-[120px] w-auto object-contain transition-transform duration-300 group-hover:scale-105"
-                    loading="lazy"
-                  />
-                </div>
-
-                {/* Brand label */}
-                <span className="mt-4 text-[11px] font-mono font-semibold uppercase tracking-wider text-neutral-400 group-hover:text-[#121212] transition-colors">
-                  {brand.name}
-                </span>
-
-                {/* Subtle corner indicator on hover */}
-                <div className="absolute top-0 right-0 w-2 h-2 bg-transparent group-hover:bg-[#991b1b] transition-colors" />
-              </div>
-            ))}
-          </div>
-        </div>
+        ))}
       </div>
     </section>
   );
