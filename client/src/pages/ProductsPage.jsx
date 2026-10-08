@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { getProducts, getFilterOptions } from '../services/catalogService';
+import { getProducts, getFilterOptions, ALLOWED_SORTS } from '../services/catalogService';
 import ProductCard from '../components/catalog/ProductCard';
 import ProductFilters from '../components/products/ProductFilters';
 import MobileFilterDrawer from '../components/products/MobileFilterDrawer';
@@ -8,9 +8,21 @@ import ActiveFilterChips from '../components/products/ActiveFilterChips';
 import Pagination from '../components/products/Pagination';
 
 /**
+ * 6 Approved Sort Modes for STEP/LAB Product Listing
+ */
+const SORT_OPTIONS = [
+  { value: 'newest', label: 'Mới nhất' },
+  { value: 'oldest', label: 'Cũ nhất' },
+  { value: 'price-asc', label: 'Giá tăng dần' },
+  { value: 'price-desc', label: 'Giá giảm dần' },
+  { value: 'name-asc', label: 'Tên A-Z' },
+  { value: 'name-desc', label: 'Tên Z-A' },
+];
+
+/**
  * ProductsPage Component
  * Full-featured product catalog listing supporting search, multi-faceted filtering,
- * 6 sorting modes, deterministic pagination, and bi-directional URL synchronization.
+ * 6 approved sorting modes, deterministic pagination, and bi-directional URL synchronization.
  */
 function ProductsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -18,7 +30,7 @@ function ProductsPage() {
   // Filter options derived from catalog
   const filterOptions = useMemo(() => getFilterOptions(), []);
 
-  // Parse applied filters from URL
+  // Parse applied filters from URL with strict sanitization
   const appliedFilters = useMemo(() => {
     const q = searchParams.get('q') || '';
     const brandStr = searchParams.get('brand') || '';
@@ -27,7 +39,8 @@ function ProductsPage() {
     const sizeStr = searchParams.get('size') || '';
     const minPrice = searchParams.get('minPrice') || '';
     const maxPrice = searchParams.get('maxPrice') || '';
-    const sort = searchParams.get('sort') || 'newest';
+    const rawSort = searchParams.get('sort');
+    const sort = ALLOWED_SORTS.includes(rawSort) ? rawSort : 'newest';
     const page = parseInt(searchParams.get('page') || '1', 10) || 1;
 
     return {
@@ -56,8 +69,8 @@ function ProductsPage() {
             next.delete(key);
           }
         } else if (val != null && val !== '') {
-          // Do not write default sort or default page=1 to keep URL clean
-          if (key === 'sort' && val === 'newest') {
+          // Do not write default sort, invalid sort, or default page=1 to keep URL clean
+          if (key === 'sort' && (val === 'newest' || !ALLOWED_SORTS.includes(val))) {
             next.delete(key);
           } else if (key === 'page' && Number(val) === 1) {
             next.delete(key);
@@ -152,7 +165,8 @@ function ProductsPage() {
   };
 
   const handleSortChange = (newSort) => {
-    updateParams({ sort: newSort, page: 1 });
+    const validSort = ALLOWED_SORTS.includes(newSort) ? newSort : 'newest';
+    updateParams({ sort: validSort, page: 1 });
   };
 
   const handlePageChange = (newPage) => {
@@ -179,9 +193,7 @@ function ProductsPage() {
 
   const handleClearAll = () => {
     setSearchInput('');
-    startTransition(() => {
-      setSearchParams(new URLSearchParams());
-    });
+    setSearchParams(new URLSearchParams());
   };
 
   const handleApplyMobileDraft = (draft) => {
@@ -249,12 +261,11 @@ function ProductsPage() {
                 onChange={(e) => handleSortChange(e.target.value)}
                 className="w-40 py-2 px-2 bg-white border border-[#e5e5e0] text-xs font-semibold text-[#121212] rounded-xs focus:outline-none"
               >
-                <option value="newest">Mới nhất</option>
-                <option value="oldest">Cũ nhất</option>
-                <option value="price-asc">Giá tăng dần</option>
-                <option value="price-desc">Giá giảm dần</option>
-                <option value="name-asc">Tên A-Z</option>
-                <option value="name-desc">Tên Z-A</option>
+                {SORT_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -305,12 +316,11 @@ function ProductsPage() {
               onChange={(e) => handleSortChange(e.target.value)}
               className="py-1.5 px-3 bg-white border border-[#e5e5e0] hover:border-[#121212] text-xs font-semibold text-[#121212] rounded-xs focus:outline-none cursor-pointer transition-colors"
             >
-              <option value="newest">Mới nhất</option>
-              <option value="oldest">Cũ nhất</option>
-              <option value="price-asc">Giá tăng dần</option>
-              <option value="price-desc">Giá giảm dần</option>
-              <option value="name-asc">Tên A-Z</option>
-              <option value="name-desc">Tên Z-A</option>
+              {SORT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
             </select>
           </div>
         </div>

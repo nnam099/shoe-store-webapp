@@ -6,6 +6,18 @@ import {
 } from '../data/catalog.js';
 
 /**
+ * 6 Approved Sort Modes for STEP/LAB Product Listing
+ */
+export const ALLOWED_SORTS = [
+  'newest',
+  'oldest',
+  'price-asc',
+  'price-desc',
+  'name-asc',
+  'name-desc',
+];
+
+/**
  * Category metadata definitions for STEP/LAB storefront.
  */
 const CATEGORY_DEFINITIONS = [
@@ -161,7 +173,7 @@ export const getProducts = (params = {}) => {
       ? Math.max(0, Number(params.maxPrice))
       : null;
 
-  const sort = params.sort || 'newest';
+  const sort = ALLOWED_SORTS.includes(params.sort) ? params.sort : 'newest';
   const page = Math.max(1, parseInt(params.page, 10) || 1);
   const pageSize = Math.max(1, parseInt(params.pageSize, 10) || 12);
 
