@@ -46,10 +46,6 @@ function ShopByCategory() {
                   loading="lazy"
                   className="w-full h-full object-contain transition-transform duration-300 ease-out group-hover:scale-105"
                 />
-                {/* Model Count Badge - top right for tablet and desktop */}
-                <div className="hidden sm:block absolute top-2.5 right-2.5 bg-[#121212] text-white text-[10px] font-bold tracking-wider uppercase px-2 py-0.5">
-                  {category.modelCount} MODELS
-                </div>
               </div>
 
               {/* Category Information */}
@@ -60,15 +56,10 @@ function ShopByCategory() {
                     {category.tagline}
                   </span>
 
-                  {/* Category Name & Compact Mobile Model Count */}
-                  <div className="flex flex-col sm:block">
-                    <h3 className="text-xs sm:text-base lg:text-lg font-bold uppercase tracking-tight text-[#121212] truncate">
-                      {category.name}
-                    </h3>
-                    <span className="sm:hidden text-[10px] font-medium tracking-wider text-[#737373] uppercase mt-0.5">
-                      {category.modelCount} MODELS
-                    </span>
-                  </div>
+                  {/* Category Name */}
+                  <h3 className="text-xs sm:text-base lg:text-lg font-bold uppercase tracking-tight text-[#121212] truncate">
+                    {category.name}
+                  </h3>
 
                   {/* Long description hidden on mobile for compact card height */}
                   <p className="hidden md:block text-xs text-[#737373] mt-1.5 leading-relaxed">

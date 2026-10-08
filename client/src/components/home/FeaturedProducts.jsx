@@ -27,7 +27,7 @@ function FeaturedProducts() {
             </h2>
           </div>
           <p className="text-xs sm:text-sm text-[#737373] mt-2 md:mt-0 max-w-md">
-            Những biểu tượng sneaker trường tồn, đại diện cho bản sắc thiết kế độc bản của 5 thương hiệu đối tác.
+            Những biểu tượng sneaker trường tồn, đại diện cho bản sắc thiết kế của các thương hiệu tại STEP/LAB.
           </p>
         </div>
 

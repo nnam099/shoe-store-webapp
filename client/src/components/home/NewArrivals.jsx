@@ -26,7 +26,7 @@ function NewArrivals() {
             </h2>
           </div>
           <p className="text-xs sm:text-sm text-[#737373] mt-2 md:mt-0 max-w-md">
-            Những thiết kế sneaker mới nhất vừa được bổ sung vào danh mục phân phối chính hãng STEP/LAB.
+            Những thiết kế sneaker mới vừa được bổ sung vào danh mục STEP/LAB.
           </p>
         </div>
 
