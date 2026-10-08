@@ -27,37 +27,19 @@ export default function BrandLogos() {
         {marqueeItems.map((brand, index) => {
           const isDecorativeClone = index >= brands.length;
 
-          if (isDecorativeClone) {
-            return (
-              <div
-                key={`${brand.id}-${index}`}
-                className="shrink-0 px-5 sm:px-8 lg:px-12 flex items-center justify-center transition-transform duration-300 hover:scale-105"
-                aria-hidden="true"
-                tabIndex={-1}
-              >
-                <div className="h-10 sm:h-14 lg:h-18 w-24 sm:w-36 lg:w-48 flex items-center justify-center">
-                  <img
-                    src={getAssetUrl(brand.logo)}
-                    alt=""
-                    className="max-h-full max-w-full w-auto h-auto object-contain opacity-80 hover:opacity-100 transition-opacity duration-200"
-                    loading="lazy"
-                  />
-                </div>
-              </div>
-            );
-          }
-
           return (
             <Link
               key={`${brand.id}-${index}`}
               to={`/products?brand=${brand.id}`}
-              className="shrink-0 px-5 sm:px-8 lg:px-12 flex items-center justify-center transition-transform duration-300 hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#121212] rounded-xs"
-              aria-label={`Xem tất cả sản phẩm ${brand.name}`}
+              className="shrink-0 px-5 sm:px-8 lg:px-12 flex items-center justify-center transition-transform duration-300 hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#121212] rounded-xs cursor-pointer"
+              tabIndex={isDecorativeClone ? -1 : undefined}
+              aria-hidden={isDecorativeClone ? 'true' : undefined}
+              aria-label={isDecorativeClone ? undefined : `Xem tất cả sản phẩm ${brand.name}`}
             >
               <div className="h-10 sm:h-14 lg:h-18 w-24 sm:w-36 lg:w-48 flex items-center justify-center">
                 <img
                   src={getAssetUrl(brand.logo)}
-                  alt={`${brand.name} logo`}
+                  alt={isDecorativeClone ? '' : `${brand.name} logo`}
                   className="max-h-full max-w-full w-auto h-auto object-contain opacity-80 hover:opacity-100 transition-opacity duration-200"
                   loading="lazy"
                 />

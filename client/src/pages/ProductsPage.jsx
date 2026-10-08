@@ -325,7 +325,7 @@ function ProductsPage() {
           </div>
         </div>
 
-        {/* Active Filter Chips */}
+        {/* Active Filter Chips (Mobile only: visible on mobile, hidden on tablet/desktop where Sidebar is active) */}
         <ActiveFilterChips
           appliedFilters={appliedFilters}
           options={filterOptions}

@@ -97,7 +97,7 @@ function ActiveFilterChips({
   if (chips.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-2 py-3">
+    <div className="flex md:hidden flex-wrap items-center gap-2 py-3">
       <span className="text-[11px] font-semibold uppercase tracking-wider text-[#737373] mr-1">
         Đang lọc:
       </span>
