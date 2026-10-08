@@ -298,3 +298,30 @@ export const getProducts = (params = {}) => {
     pageSize,
   };
 };
+
+/**
+ * Get product by slug for Product Detail page.
+ * Returns product object or null if not found.
+ */
+export const getProductBySlug = (slug) => {
+  if (!slug) return null;
+  return products.find((p) => p.slug === slug) || null;
+};
+
+/**
+ * Get colorway by slug from a product with validation status.
+ * If colorwaySlug is valid, returns { colorway, isValid: true }.
+ * If colorwaySlug is omitted/empty, returns { colorway: defaultColorway, isValid: true }.
+ * If colorwaySlug is provided but not found, returns { colorway: defaultColorway, isValid: false }.
+ */
+export const getColorwayBySlug = (product, colorwaySlug) => {
+  if (!product) return { colorway: null, isValid: false };
+  if (!colorwaySlug) {
+    return { colorway: product.defaultColorway, isValid: true };
+  }
+  const match = product.colorways.find((cw) => cw.slug === colorwaySlug);
+  if (match) {
+    return { colorway: match, isValid: true };
+  }
+  return { colorway: product.defaultColorway, isValid: false };
+};

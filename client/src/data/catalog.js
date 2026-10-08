@@ -393,6 +393,19 @@ const rawProducts = [
 ];
 
 /**
+ * Explicit set of 6 verified Colorways with exactly 3 images.
+ * All other 74 Colorways have exactly 4 images.
+ */
+export const THREE_IMAGE_COLORWAYS = new Set([
+  'new-balance/2002r/black',
+  'new-balance/2002r/dark-olivine',
+  'new-balance/2002r/taupe',
+  'new-balance/530/beige',
+  'new-balance/530/black',
+  'puma/rs-x-efekt-prm/grey-white',
+]);
+
+/**
  * Normalized 20 Products with 80 Colorways & 720 Variants.
  * defaultColorway is a derived getter from colorways array (Single Source of Truth).
  */
@@ -400,6 +413,13 @@ export const products = rawProducts.map((p) => {
   const colorways = p.colorwaySlugs.map((cwSlug) => {
     const isDefault = cwSlug === p.defaultColorwaySlug;
     const thumbnail = `products/${p.brand.slug}/${p.slug}/${cwSlug}/1.avif`;
+    const colorwayKey = `${p.brand.slug}/${p.slug}/${cwSlug}`;
+    const imageCount = THREE_IMAGE_COLORWAYS.has(colorwayKey) ? 3 : 4;
+    const images = Array.from(
+      { length: imageCount },
+      (_, i) => `products/${p.brand.slug}/${p.slug}/${cwSlug}/${i + 1}.avif`
+    );
+
     const variants = SIZES.map((size) => ({
       size,
       stock: getDeterministicStock(p.slug, cwSlug, size),
@@ -418,6 +438,7 @@ export const products = rawProducts.map((p) => {
       salePrice: p.salePrice,
       isDefault,
       thumbnail,
+      images,
       variants,
     };
   });

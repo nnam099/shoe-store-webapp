@@ -10,6 +10,11 @@ export const getAssetUrl = (path) => {
   return `${cleanBase}${cleanPath}`;
 };
 
+export const formatPrice = (amount) => {
+  if (amount == null) return '';
+  return `${amount.toLocaleString('vi-VN')} ₫`;
+};
+
 export const siteConfig = {
   name: 'STEP/LAB',
   tagline: 'Multi-Brand Footwear',

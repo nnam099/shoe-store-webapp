@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { getAssetUrl } from '../../config/site';
 
 /**
@@ -10,11 +11,8 @@ const formatVND = (amount) => {
 
 /**
  * STEP/LAB Product Card Component
- * Reusable product display card adhering to editorial aesthetic:
- * - Studio product thumbnail with subtle hover zoom
- * - Brand label, product title, formatted VND price
- * - Sale badge when on promotion (-15%)
- * - Hairline border interaction without fake navigation or dead links
+ * Reusable product display card linking to Product Detail route (/products/:slug).
+ * Preserves active colorway deep-linking when navigated from product listing.
  */
 function ProductCard({ product, colorway }) {
   const activeColorway = colorway || product.displayColorway || product.defaultColorway;
@@ -23,8 +21,18 @@ function ProductCard({ product, colorway }) {
   const hasSale = salePrice !== null && salePrice < price;
   const discountPercent = hasSale ? Math.round(((price - salePrice) / price) * 100) : 0;
 
+  // Build target URL: preserve active colorway if different from default
+  const targetUrl =
+    activeColorway.slug !== product.defaultColorwaySlug
+      ? `/products/${product.slug}?colorway=${activeColorway.slug}`
+      : `/products/${product.slug}`;
+
   return (
-    <div className="group relative flex flex-col bg-white border border-[#e5e5e0] hover:border-[#121212] transition-colors duration-200 overflow-hidden">
+    <Link
+      to={targetUrl}
+      aria-label={`Xem chi tiết ${brand.name} ${name}`}
+      className="group relative flex flex-col bg-white border border-[#e5e5e0] hover:border-[#121212] transition-colors duration-200 overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-[#121212] rounded-xs cursor-pointer"
+    >
       {/* Product Image Stage */}
       <div className="relative aspect-square bg-[#f5f5f3] flex items-center justify-center p-3 sm:p-5 overflow-hidden">
         {hasSale && (
@@ -69,7 +77,7 @@ function ProductCard({ product, colorway }) {
           )}
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
 
