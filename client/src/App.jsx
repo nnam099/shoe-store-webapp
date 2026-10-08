@@ -5,7 +5,7 @@ import BrandLogos from './components/home/BrandLogos';
 
 function App() {
   return (
-    <div className="min-h-screen flex flex-col bg-[#f8f8f6] text-[#121212]">
+    <div className="min-h-screen flex flex-col bg-[#f8f8f6] text-[#121212] overflow-x-hidden">
       {/* Top Header */}
       <Header />
 

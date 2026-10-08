@@ -69,8 +69,8 @@ export default function HeroSlider() {
       onFocus={() => setIsPaused(true)}
       onBlur={() => setIsPaused(false)}
     >
-      {/* Slides Container */}
-      <div className="relative w-full aspect-[4/3] sm:aspect-[16/9] lg:aspect-[21/9] xl:aspect-[2.4/1] min-h-[380px] sm:min-h-[460px] lg:min-h-[540px] max-h-[680px]">
+      {/* Slides Container: Mobile height 480-520px, desktop aspect ratios */}
+      <div className="relative w-full h-[480px] sm:h-[520px] md:h-auto md:aspect-[16/9] lg:aspect-[21/9] xl:aspect-[2.4/1] md:min-h-[500px] lg:min-h-[540px] max-h-[680px]">
         {slides.map((slide, index) => {
           const isActive = index === currentIndex;
 
@@ -95,13 +95,13 @@ export default function HeroSlider() {
                 fetchPriority={index === 0 ? 'high' : 'auto'}
               />
 
-              {/* Gradient Scrim */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent sm:bg-gradient-to-r sm:from-black/85 sm:via-black/35 sm:to-transparent" />
+              {/* Gradient Scrim - optimized contrast for mobile */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-transparent sm:bg-gradient-to-r sm:from-black/85 sm:via-black/35 sm:to-transparent" />
 
               {/* Content Overlay */}
               <div className="absolute inset-0 flex items-end sm:items-center">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full pb-14 sm:pb-0">
-                  <div className="max-w-xl lg:max-w-2xl space-y-3 sm:space-y-4 text-left">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full pb-16 sm:pb-0">
+                  <div className="max-w-xl lg:max-w-2xl space-y-2.5 sm:space-y-4 text-left">
                     {/* Tag badge */}
                     <div className="inline-flex items-center gap-2">
                       <span className="w-2 h-2 bg-[#991b1b]" />
@@ -111,20 +111,20 @@ export default function HeroSlider() {
                     </div>
 
                     {/* Headline */}
-                    <h2 className="font-['Space_Grotesk'] text-2xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white leading-[1.15]">
+                    <h2 className="font-['Space_Grotesk'] text-2xl sm:text-3xl lg:text-5xl font-extrabold tracking-tight text-white leading-tight">
                       {slide.title}
                     </h2>
 
                     {/* Subtitle */}
-                    <p className="text-xs sm:text-sm lg:text-base text-neutral-300 font-normal leading-relaxed max-w-lg line-clamp-2 sm:line-clamp-none">
+                    <p className="text-xs sm:text-sm lg:text-base text-neutral-300 font-normal leading-relaxed max-w-md sm:max-w-lg line-clamp-2 sm:line-clamp-none">
                       {slide.subtitle}
                     </p>
 
-                    {/* CTA button leading to #brands */}
+                    {/* CTA button leading to #brands (Touch target >= 44px) */}
                     <div className="pt-2 sm:pt-4">
                       <a
                         href={slide.ctaHref}
-                        className="inline-flex items-center gap-3 bg-white text-[#121212] hover:bg-[#991b1b] hover:text-white px-5 sm:px-7 py-3 text-xs sm:text-sm font-bold uppercase tracking-wider transition-all duration-200 focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
+                        className="inline-flex items-center gap-2.5 bg-white text-[#121212] hover:bg-[#991b1b] hover:text-white px-5 sm:px-7 py-2.5 sm:py-3 text-xs sm:text-sm font-bold uppercase tracking-wider transition-all duration-200 focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2 min-h-[44px]"
                       >
                         <span>{slide.ctaText}</span>
                         <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -140,12 +140,12 @@ export default function HeroSlider() {
         })}
       </div>
 
-      {/* Previous / Next Desktop Controls */}
-      <div className="hidden sm:flex absolute inset-y-0 left-0 right-0 z-20 items-center justify-between px-4 sm:px-6 pointer-events-none">
+      {/* Previous / Next Desktop Controls (Hidden on Mobile) */}
+      <div className="hidden md:flex absolute inset-y-0 left-0 right-0 z-20 items-center justify-between px-4 sm:px-6 pointer-events-none">
         <button
           type="button"
           onClick={goToPrev}
-          className="pointer-events-auto p-3 rounded-none bg-black/40 hover:bg-[#991b1b] text-white border border-white/20 transition-all duration-200 focus-visible:outline-2 focus-visible:outline-white"
+          className="pointer-events-auto p-3 rounded-none bg-black/40 hover:bg-[#991b1b] text-white border border-white/20 transition-all duration-200 focus-visible:outline-2 focus-visible:outline-white min-w-[44px] min-h-[44px] flex items-center justify-center"
           aria-label="Slide trước đó"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -156,7 +156,7 @@ export default function HeroSlider() {
         <button
           type="button"
           onClick={goToNext}
-          className="pointer-events-auto p-3 rounded-none bg-black/40 hover:bg-[#991b1b] text-white border border-white/20 transition-all duration-200 focus-visible:outline-2 focus-visible:outline-white"
+          className="pointer-events-auto p-3 rounded-none bg-black/40 hover:bg-[#991b1b] text-white border border-white/20 transition-all duration-200 focus-visible:outline-2 focus-visible:outline-white min-w-[44px] min-h-[44px] flex items-center justify-center"
           aria-label="Slide kế tiếp"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -168,7 +168,7 @@ export default function HeroSlider() {
       {/* Indicators / Progress Bar */}
       <div className="absolute bottom-4 sm:bottom-6 left-0 right-0 z-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
-          {/* Dash Indicators */}
+          {/* Dash Indicators with safe touch target */}
           <div className="flex items-center gap-2" role="tablist" aria-label="Chọn slide">
             {slides.map((slide, index) => {
               const isActive = index === currentIndex;
@@ -180,10 +180,14 @@ export default function HeroSlider() {
                   aria-selected={isActive}
                   aria-label={`Chuyển tới slide ${index + 1}`}
                   onClick={() => goToSlide(index)}
-                  className={`h-1.5 transition-all duration-300 rounded-none focus-visible:outline-2 focus-visible:outline-white ${
-                    isActive ? 'w-8 sm:w-10 bg-[#991b1b]' : 'w-3 sm:w-4 bg-white/40 hover:bg-white/70'
-                  }`}
-                />
+                  className="py-2 focus-visible:outline-2 focus-visible:outline-white"
+                >
+                  <span
+                    className={`block h-1.5 transition-all duration-300 rounded-none ${
+                      isActive ? 'w-7 sm:w-10 bg-[#991b1b]' : 'w-3 sm:w-4 bg-white/40 hover:bg-white/70'
+                    }`}
+                  />
+                </button>
               );
             })}
           </div>

@@ -30,20 +30,20 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-40 w-full bg-[#f8f8f6]/95 backdrop-blur-md border-b border-[#e6e6e2] transition-colors">
       {/* Announcement Bar */}
-      <div className="bg-[#121212] text-neutral-300 text-[11px] font-medium tracking-wider uppercase py-2 px-4 text-center border-b border-[#2a2a2a] select-none">
+      <div className="bg-[#121212] text-neutral-300 text-[10px] sm:text-[11px] font-medium tracking-wider uppercase py-2 px-3 text-center border-b border-[#2a2a2a] select-none">
         <p className="truncate">{siteConfig.announcement}</p>
       </div>
 
       {/* Main Navigation Bar */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 sm:h-16 lg:h-20 flex items-center justify-between">
         {/* Brand Wordmark */}
         <div className="flex items-center gap-8">
           <a
             href="#"
-            className="group flex items-baseline gap-1.5 focus-visible:outline-2 focus-visible:outline-[#991b1b] focus-visible:outline-offset-4 rounded-sm"
+            className="group flex items-baseline gap-1 focus-visible:outline-2 focus-visible:outline-[#991b1b] focus-visible:outline-offset-4 rounded-sm py-1"
             aria-label={`${siteConfig.name} - Trang chủ`}
           >
-            <span className="font-['Space_Grotesk'] text-2xl sm:text-3xl font-extrabold tracking-tighter text-[#121212] group-hover:text-[#991b1b] transition-colors">
+            <span className="font-['Space_Grotesk'] text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tighter text-[#121212] group-hover:text-[#991b1b] transition-colors">
               STEP<span className="text-[#991b1b]">/</span>LAB
             </span>
           </a>
@@ -62,12 +62,12 @@ export default function Header() {
           </nav>
         </div>
 
-        {/* Future expansion zone & Mobile Hamburger Button */}
-        <div className="flex items-center gap-4">
+        {/* Hamburger Button (Touch Target >= 44x44px) */}
+        <div className="flex items-center">
           <button
             type="button"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="md:hidden inline-flex items-center justify-center p-2 rounded-sm text-[#121212] hover:bg-[#e6e6e2]/60 focus-visible:outline-2 focus-visible:outline-[#991b1b] focus-visible:outline-offset-2 transition-colors"
+            className="md:hidden min-w-[44px] min-h-[44px] w-11 h-11 flex items-center justify-center p-2.5 rounded-sm text-[#121212] hover:bg-[#e6e6e2]/60 focus-visible:outline-2 focus-visible:outline-[#991b1b] focus-visible:outline-offset-2 transition-colors"
             aria-controls="mobile-menu-drawer"
             aria-expanded={isMobileMenuOpen}
             aria-label={isMobileMenuOpen ? 'Đóng menu' : 'Mở menu'}
@@ -88,7 +88,7 @@ export default function Header() {
       {/* Mobile Drawer Overlay */}
       {isMobileMenuOpen && (
         <div
-          className="fixed inset-0 top-[calc(40px+4rem)] sm:top-[calc(40px+5rem)] z-30 bg-black/40 backdrop-blur-xs md:hidden transition-opacity"
+          className="fixed inset-0 top-0 z-30 bg-black/40 backdrop-blur-xs md:hidden transition-opacity"
           onClick={() => setIsMobileMenuOpen(false)}
           aria-hidden="true"
         />
@@ -97,19 +97,19 @@ export default function Header() {
       {/* Mobile Drawer Content */}
       <div
         id="mobile-menu-drawer"
-        className={`fixed top-[calc(37px+4rem)] sm:top-[calc(37px+5rem)] left-0 right-0 z-40 bg-[#f8f8f6] border-b border-[#e6e6e2] shadow-xl md:hidden transition-all duration-300 ease-in-out ${
+        className={`absolute top-full left-0 right-0 z-40 bg-[#f8f8f6] border-b border-[#e6e6e2] shadow-xl md:hidden max-h-[calc(100dvh-5rem)] overflow-y-auto transition-all duration-300 ease-in-out ${
           isMobileMenuOpen ? 'opacity-100 translate-y-0 visible' : 'opacity-0 -translate-y-4 invisible pointer-events-none'
         }`}
         aria-label="Menu di động"
       >
         <div className="px-6 py-8 space-y-6">
-          <div className="flex flex-col space-y-4">
+          <div className="flex flex-col space-y-3">
             {siteConfig.navLinks.map((link) => (
               <a
                 key={link.label}
                 href={link.href}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="text-lg font-bold uppercase tracking-wider text-[#121212] hover:text-[#991b1b] transition-colors py-2 border-b border-[#e6e6e2]/60 focus-visible:outline-2 focus-visible:outline-[#991b1b] focus-visible:outline-offset-2"
+                className="text-base sm:text-lg font-bold uppercase tracking-wider text-[#121212] hover:text-[#991b1b] transition-colors py-3 border-b border-[#e6e6e2]/60 focus-visible:outline-2 focus-visible:outline-[#991b1b] focus-visible:outline-offset-2 min-h-[44px] flex items-center"
               >
                 {link.label}
               </a>
