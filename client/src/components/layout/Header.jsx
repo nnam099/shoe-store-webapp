@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { siteConfig } from '../../config/site';
+import useCartCount from '../../hooks/useCartCount';
 
 export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const cartCount = useCartCount();
 
   const handleNavClick = (link, e) => {
     setIsMobileMenuOpen(false);
@@ -50,7 +52,7 @@ export default function Header() {
 
       {/* Main Navigation Bar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 sm:h-16 lg:h-20 flex items-center justify-between">
-        {/* Brand Wordmark */}
+        {/* Brand Wordmark & Desktop Links */}
         <div className="flex items-center gap-8">
           <Link
             to="/"
@@ -77,8 +79,27 @@ export default function Header() {
           </nav>
         </div>
 
-        {/* Hamburger Button (Touch Target >= 44x44px) */}
-        <div className="flex items-center">
+        {/* Right Actions: Cart Link + Mobile Menu Toggle */}
+        <div className="flex items-center gap-1 sm:gap-2">
+          {/* Cart Icon Link */}
+          <Link
+            to="/cart"
+            className="relative min-w-[44px] min-h-[44px] w-11 h-11 flex items-center justify-center p-2 rounded-sm text-[#121212] hover:bg-[#e6e6e2]/60 focus-visible:outline-2 focus-visible:outline-[#991b1b] focus-visible:outline-offset-2 transition-colors cursor-pointer select-none"
+            aria-label={`Giỏ hàng, ${cartCount} sản phẩm`}
+          >
+            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+            </svg>
+
+            {/* Cart Count Badge */}
+            {cartCount > 0 && (
+              <span className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] px-1 bg-[#b91c1c] text-white text-[10px] font-extrabold rounded-full flex items-center justify-center leading-none tracking-tight shadow-xs">
+                {cartCount > 99 ? '99+' : cartCount}
+              </span>
+            )}
+          </Link>
+
+          {/* Hamburger Button (Touch Target >= 44x44px) */}
           <button
             type="button"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
