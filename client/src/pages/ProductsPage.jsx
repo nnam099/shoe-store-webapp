@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { getProducts, getFilterOptions, ALLOWED_SORTS } from '../services/catalogService';
 import ProductCard from '../components/catalog/ProductCard';
 import ProductFilters from '../components/products/ProductFilters';
@@ -220,30 +220,68 @@ function ProductsPage() {
     <div className="bg-[#f8f8f6] min-h-screen py-6 sm:py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Breadcrumbs & Title */}
-        <div className="mb-6 sm:mb-8">
+        <div className="mb-4 sm:mb-6 md:mb-8">
           <nav className="text-[11px] font-bold uppercase tracking-wider text-[#737373] mb-2 flex items-center gap-1.5 select-none">
-            <a href="/" className="hover:text-[#121212] transition-colors">
+            <Link to="/" className="hover:text-[#121212] transition-colors">
               Trang chủ
-            </a>
+            </Link>
             <span>/</span>
             <span className="text-[#121212]">Tất cả sản phẩm</span>
           </nav>
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
-            <div>
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold uppercase tracking-tight text-[#121212]">
-                Tất cả sản phẩm
-              </h1>
-              <p className="text-xs text-[#737373] mt-1">
-                Hiển thị <strong className="text-[#121212]">{total}</strong> mẫu sneaker tuyển chọn
-              </p>
+
+          <div>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold uppercase tracking-tight text-[#121212]">
+              Tất cả sản phẩm
+            </h1>
+            <p className="text-xs text-[#737373] mt-1">
+              Hiển thị <strong className="text-[#121212]">{total}</strong> mẫu sneaker tuyển chọn
+            </p>
+          </div>
+
+          {/* Mobile Search & Controls (< 768px) */}
+          <div className="md:hidden mt-3.5">
+            {/* Full-width Mobile Search Box */}
+            <div className="relative w-full">
+              <input
+                type="text"
+                placeholder="Tìm theo tên, hãng, màu sắc..."
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className="w-full h-11 text-xs py-2.5 pl-10 pr-10 bg-white border border-[#e5e5e0] focus:border-[#121212] focus:outline-none rounded-xs transition-colors shadow-2xs"
+                aria-label="Tìm kiếm sản phẩm"
+              />
+              <svg
+                className="w-4 h-4 text-[#737373] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              {searchInput && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchInput('');
+                    updateParams({ q: '', page: 1 });
+                  }}
+                  className="w-11 h-11 flex items-center justify-center absolute right-0 top-1/2 -translate-y-1/2 text-[#a3a3a3] hover:text-[#121212] cursor-pointer"
+                  aria-label="Xóa từ khóa tìm kiếm"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
             </div>
 
-            {/* Mobile Filter Toggle & Sort Bar */}
-            <div className="flex items-center gap-2 sm:hidden pt-3 border-t border-[#e5e5e0]">
+            {/* Mobile Filter Toggle & Sort Bar (12-16px below Search) */}
+            <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[#e5e5e0]">
               <button
                 type="button"
                 onClick={() => setIsMobileDrawerOpen(true)}
-                className="flex-1 py-2 px-3 bg-white border border-[#e5e5e0] hover:border-[#121212] text-xs font-bold uppercase tracking-wider text-[#121212] flex items-center justify-center gap-2 rounded-xs"
+                className="flex-1 h-11 px-3 bg-white border border-[#e5e5e0] hover:border-[#121212] text-xs font-bold uppercase tracking-wider text-[#121212] flex items-center justify-center gap-2 rounded-xs shadow-2xs cursor-pointer"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
@@ -259,7 +297,8 @@ function ProductsPage() {
               <select
                 value={appliedFilters.sort}
                 onChange={(e) => handleSortChange(e.target.value)}
-                className="w-40 py-2 px-2 bg-white border border-[#e5e5e0] text-xs font-semibold text-[#121212] rounded-xs focus:outline-none"
+                className="w-40 h-11 px-2.5 bg-white border border-[#e5e5e0] text-xs font-semibold text-[#121212] rounded-xs focus:outline-none shadow-2xs cursor-pointer"
+                aria-label="Sắp xếp sản phẩm"
               >
                 {SORT_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -271,8 +310,8 @@ function ProductsPage() {
           </div>
         </div>
 
-        {/* Search & Top Action Bar (Desktop / Tablet) */}
-        <div className="hidden sm:flex items-center justify-between gap-4 mb-6 pb-4 border-b border-[#e5e5e0]">
+        {/* Search & Top Action Bar (Desktop / Tablet >= 768px) */}
+        <div className="hidden md:flex items-center justify-between gap-4 mb-6 pb-4 border-b border-[#e5e5e0]">
           {/* Search Box */}
           <div className="relative w-72 lg:w-80">
             <input
