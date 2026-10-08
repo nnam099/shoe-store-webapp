@@ -1,16 +1,16 @@
-import { useRef } from 'react';
+import { useRef, useEffect, useCallback } from 'react';
 import { getAssetUrl } from '../../config/site';
 
 /**
- * DesktopZoomTile Component
- * Editorial image tile for desktop (>= 1024px) featuring cursor-follow hover zoom.
- * Calculates cursor position percentage to update transformOrigin dynamically
+ * usePointerZoom Custom Hook
+ * Reusable cursor-follow hover zoom logic for fine-pointer devices.
+ * Updates transformOrigin and transform directly on the image element ref
  * with zero component re-renders.
  */
-function DesktopZoomTile({ src, alt, isSpan2 = false }) {
+function usePointerZoom() {
   const imgRef = useRef(null);
 
-  const handleMouseEnter = (e) => {
+  const onMouseEnter = (e) => {
     if (window.matchMedia && !window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
       return;
     }
@@ -24,7 +24,7 @@ function DesktopZoomTile({ src, alt, isSpan2 = false }) {
     }
   };
 
-  const handleMouseMove = (e) => {
+  const onMouseMove = (e) => {
     if (window.matchMedia && !window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
       return;
     }
@@ -37,17 +37,40 @@ function DesktopZoomTile({ src, alt, isSpan2 = false }) {
     }
   };
 
-  const handleMouseLeave = () => {
+  const onMouseLeave = () => {
     if (imgRef.current) {
       imgRef.current.style.transform = 'scale(1)';
     }
   };
 
+  const resetZoom = useCallback(() => {
+    if (imgRef.current) {
+      imgRef.current.style.transform = 'scale(1)';
+      imgRef.current.style.transformOrigin = '50% 50%';
+    }
+  }, []);
+
+  return {
+    imgRef,
+    zoomProps: {
+      onMouseEnter,
+      onMouseMove,
+      onMouseLeave,
+    },
+    resetZoom,
+  };
+}
+
+/**
+ * DesktopZoomTile Component
+ * Editorial image tile for desktop (>= 1024px) featuring cursor-follow hover zoom.
+ */
+function DesktopZoomTile({ src, alt, isSpan2 = false }) {
+  const { imgRef, zoomProps } = usePointerZoom();
+
   return (
     <div
-      onMouseEnter={handleMouseEnter}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
+      {...zoomProps}
       className={`relative bg-[#f5f5f3] border border-[#e5e5e0] rounded-xs overflow-hidden flex items-center justify-center p-6 sm:p-8 cursor-crosshair select-none ${
         isSpan2 ? 'col-span-2 aspect-[2/1]' : 'aspect-square'
       }`}
@@ -69,6 +92,7 @@ function DesktopZoomTile({ src, alt, isSpan2 = false }) {
  * Desktop (>= 1024px): Editorial 2-column grid showing all 3 or 4 images simultaneously
  * with cursor-follow hover zoom.
  * Mobile (< 1024px): Hero showcase on top + horizontal thumbnail rail with image counter.
+ * Supports cursor-follow zoom on main image when a fine pointer/mouse is used.
  */
 function ProductGallery({
   images = [],
@@ -79,6 +103,17 @@ function ProductGallery({
 }) {
   const safeIndex = Math.min(Math.max(0, activeImageIndex), Math.max(0, images.length - 1));
   const currentImage = images[safeIndex] || images[0];
+
+  const {
+    imgRef: mobileImgRef,
+    zoomProps: mobileZoomProps,
+    resetZoom: resetMobileZoom,
+  } = usePointerZoom();
+
+  // Reset zoom on mobile main image when active image changes (thumbnail click or colorway switch)
+  useEffect(() => {
+    resetMobileZoom();
+  }, [currentImage, resetMobileZoom]);
 
   return (
     <div className="w-full">
@@ -100,19 +135,23 @@ function ProductGallery({
       {/* Mobile & Tablet Layout (< 1024px): Main Hero Top + Horizontal Thumbnails Below */}
       <div className="lg:hidden flex flex-col gap-3">
         {/* Main Hero Image */}
-        <div className="relative w-full aspect-square bg-[#f5f5f3] border border-[#e5e5e0] rounded-xs flex items-center justify-center p-4 sm:p-8 overflow-hidden">
+        <div
+          {...mobileZoomProps}
+          className="relative w-full aspect-square bg-[#f5f5f3] border border-[#e5e5e0] rounded-xs flex items-center justify-center p-4 sm:p-8 overflow-hidden select-none cursor-crosshair"
+        >
           {currentImage ? (
             <img
+              ref={mobileImgRef}
               src={getAssetUrl(currentImage)}
               alt={`${productName} - ${colorwayName} - Góc nhìn ${safeIndex + 1}`}
-              className="w-full h-full object-contain"
+              className="w-full h-full object-contain pointer-events-none transition-transform duration-200 ease-out will-change-transform"
             />
           ) : (
             <div className="text-xs text-[#a3a3a3]">Không có ảnh</div>
           )}
 
           {/* Mobile Index Counter */}
-          <div className="absolute bottom-3 right-3 px-2 py-1 bg-white/90 backdrop-blur-xs border border-[#e5e5e0] text-[10px] font-bold text-[#737373] rounded-xs tracking-wider select-none">
+          <div className="absolute bottom-3 right-3 px-2 py-1 bg-white/90 backdrop-blur-xs border border-[#e5e5e0] text-[10px] font-bold text-[#737373] rounded-xs tracking-wider select-none pointer-events-none">
             {safeIndex + 1} / {images.length}
           </div>
         </div>
