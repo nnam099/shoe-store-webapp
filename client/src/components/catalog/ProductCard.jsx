@@ -16,9 +16,10 @@ const formatVND = (amount) => {
  * - Sale badge when on promotion (-15%)
  * - Hairline border interaction without fake navigation or dead links
  */
-function ProductCard({ product }) {
-  const { name, brand, defaultColorway } = product;
-  const { price, salePrice, thumbnail } = defaultColorway;
+function ProductCard({ product, colorway }) {
+  const activeColorway = colorway || product.displayColorway || product.defaultColorway;
+  const { name, brand } = product;
+  const { price, salePrice, thumbnail } = activeColorway;
   const hasSale = salePrice !== null && salePrice < price;
   const discountPercent = hasSale ? Math.round(((price - salePrice) / price) * 100) : 0;
 

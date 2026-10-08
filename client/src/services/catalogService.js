@@ -1,8 +1,12 @@
-import { products } from '../data/catalog';
+import {
+  products,
+  SIZES,
+  COLOR_FAMILIES,
+  COLORWAY_FAMILY_MAP,
+} from '../data/catalog.js';
 
 /**
  * Category metadata definitions for STEP/LAB storefront.
- * Thumbnails use selected representative products from the 20-image catalog subset.
  */
 const CATEGORY_DEFINITIONS = [
   {
@@ -40,16 +44,40 @@ const CATEGORY_DEFINITIONS = [
 ];
 
 /**
- * Get featured products for homepage showcase.
- * Exactly 6 products representing 5 brands.
+ * Normalize text by trimming, lowercasing, and removing Vietnamese diacritics
+ */
+export function normalizeText(str) {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'd')
+    .trim();
+}
+
+/**
+ * Helper to parse comma-separated or array param values
+ */
+function toArray(val) {
+  if (!val) return [];
+  if (Array.isArray(val)) return val.map((s) => String(s).trim()).filter(Boolean);
+  return String(val)
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+/**
+ * Get featured products for homepage showcase (6 flagship products)
  */
 export const getFeaturedProducts = () => {
   return products.filter((product) => product.isFeatured);
 };
 
 /**
- * Get new arrivals sorted by deterministic createdAt DESC.
- * Defaults to 8 items for the homepage 4x2 grid.
+ * Get new arrivals sorted by deterministic createdAt DESC (8 products)
  */
 export const getNewArrivals = (limit = 8) => {
   return [...products]
@@ -58,8 +86,7 @@ export const getNewArrivals = (limit = 8) => {
 };
 
 /**
- * Get categories with model counts derived dynamically from the catalog.
- * Guaranteed to match exact derived counts (Classic: 13, Lifestyle: 12, Streetwear: 10, Running: 5).
+ * Get categories with dynamic model counts
  */
 export const getCategories = () => {
   const counts = {};
@@ -73,4 +100,189 @@ export const getCategories = () => {
     ...cat,
     modelCount: counts[cat.slug] || 0,
   }));
+};
+
+/**
+ * Get options metadata for filters (Brands, Categories, Colors, Sizes, Price bounds)
+ */
+export const getFilterOptions = () => {
+  // Brand list derived from products
+  const brandMap = new Map();
+  products.forEach((p) => {
+    if (!brandMap.has(p.brand.slug)) {
+      brandMap.set(p.brand.slug, { slug: p.brand.slug, name: p.brand.name, count: 0 });
+    }
+    brandMap.get(p.brand.slug).count += 1;
+  });
+
+  // Category counts
+  const categoryMap = new Map();
+  CATEGORY_DEFINITIONS.forEach((c) => {
+    categoryMap.set(c.slug, { slug: c.slug, name: c.name, count: 0 });
+  });
+  products.forEach((p) => {
+    p.categories.forEach((cSlug) => {
+      if (categoryMap.has(cSlug)) {
+        categoryMap.get(cSlug).count += 1;
+      }
+    });
+  });
+
+  return {
+    brands: Array.from(brandMap.values()),
+    categories: Array.from(categoryMap.values()),
+    colors: COLOR_FAMILIES,
+    sizes: SIZES,
+    priceRange: {
+      min: 1360000,
+      max: 3800000,
+    },
+  };
+};
+
+/**
+ * Query products with multi-faceted filtering, searching, sorting, and pagination.
+ * Guarantees SAME-COLORWAY rule for Color, Size (stock > 0), and Price.
+ */
+export const getProducts = (params = {}) => {
+  const search = normalizeText(params.q);
+  const brands = toArray(params.brand);
+  const categories = toArray(params.category);
+  const colors = toArray(params.color);
+  const sizes = toArray(params.size);
+
+  const minPriceNum =
+    params.minPrice != null && params.minPrice !== '' && !isNaN(Number(params.minPrice))
+      ? Math.max(0, Number(params.minPrice))
+      : null;
+
+  const maxPriceNum =
+    params.maxPrice != null && params.maxPrice !== '' && !isNaN(Number(params.maxPrice))
+      ? Math.max(0, Number(params.maxPrice))
+      : null;
+
+  const sort = params.sort || 'newest';
+  const page = Math.max(1, parseInt(params.page, 10) || 1);
+  const pageSize = Math.max(1, parseInt(params.pageSize, 10) || 12);
+
+  const hasColorFilter = colors.length > 0;
+  const hasSizeFilter = sizes.length > 0;
+  const hasPriceFilter = minPriceNum !== null || maxPriceNum !== null;
+  const hasSpecificColorwayFilter = hasColorFilter || hasSizeFilter || hasPriceFilter;
+
+  // Filter products
+  const matchedList = [];
+
+  for (const product of products) {
+    // 1. Search text filter (tokens across product name, brand name, and colorway names)
+    if (search) {
+      const searchTokens = search.split(/\s+/).filter(Boolean);
+      const allColorwayNames = product.colorways.map((c) => c.name).join(' ');
+      const targetText = normalizeText(
+        `${product.name} ${product.brand.name} ${allColorwayNames}`
+      );
+      const allTokensMatch = searchTokens.every((token) => targetText.includes(token));
+      if (!allTokensMatch) continue;
+    }
+
+    // 2. Brand filter (OR within selected brands)
+    if (brands.length > 0 && !brands.includes(product.brand.slug)) {
+      continue;
+    }
+
+    // 3. Category filter (OR within selected categories)
+    if (categories.length > 0) {
+      const hasCat = product.categories.some((c) => categories.includes(c));
+      if (!hasCat) continue;
+    }
+
+    // 4. Same-Colorway Evaluation for Color, Size (stock > 0), and Price
+    const matchingColorways = [];
+
+    for (const colorway of product.colorways) {
+      // 4a. Color filter: colorway must belong to at least one selected family
+      if (hasColorFilter) {
+        const families = COLORWAY_FAMILY_MAP[colorway.slug] || [];
+        const matchesColor = colors.some((c) => families.includes(c));
+        if (!matchesColor) continue;
+      }
+
+      // 4b. Size filter: colorway must have in-stock variant (stock > 0) matching selected size
+      if (hasSizeFilter) {
+        const hasInStockSize = colorway.variants.some(
+          (v) => sizes.includes(v.size) && v.stock > 0
+        );
+        if (!hasInStockSize) continue;
+      }
+
+      // 4c. Price filter: effective price of THIS colorway must be within range
+      const effectivePrice = colorway.salePrice ?? colorway.price;
+      if (minPriceNum !== null && effectivePrice < minPriceNum) continue;
+      if (maxPriceNum !== null && effectivePrice > maxPriceNum) continue;
+
+      // Colorway meets all criteria
+      matchingColorways.push(colorway);
+    }
+
+    // If specific colorway filters are active, product only matches if at least 1 colorway qualifies
+    if (hasSpecificColorwayFilter && matchingColorways.length === 0) {
+      continue;
+    }
+
+    // 5. Determine displayColorway
+    let displayColorway;
+    if (!hasSpecificColorwayFilter) {
+      displayColorway = product.defaultColorway;
+    } else {
+      // If defaultColorway is among matching colorways, preserve it; otherwise pick first matching
+      const defaultIsMatched = matchingColorways.some(
+        (cw) => cw.slug === product.defaultColorwaySlug
+      );
+      displayColorway = defaultIsMatched
+        ? product.defaultColorway
+        : matchingColorways[0];
+    }
+
+    const displayEffectivePrice = displayColorway.salePrice ?? displayColorway.price;
+
+    matchedList.push({
+      ...product,
+      displayColorway,
+      displayEffectivePrice,
+    });
+  }
+
+  // Sorter
+  matchedList.sort((a, b) => {
+    switch (sort) {
+      case 'price-asc':
+        return a.displayEffectivePrice - b.displayEffectivePrice;
+      case 'price-desc':
+        return b.displayEffectivePrice - a.displayEffectivePrice;
+      case 'name-asc':
+        return a.name.localeCompare(b.name, 'vi');
+      case 'name-desc':
+        return b.name.localeCompare(a.name, 'vi');
+      case 'oldest':
+        return new Date(a.createdAt) - new Date(b.createdAt);
+      case 'newest':
+      default:
+        return new Date(b.createdAt) - new Date(a.createdAt);
+    }
+  });
+
+  // Pagination
+  const total = matchedList.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const startIndex = (currentPage - 1) * pageSize;
+  const items = matchedList.slice(startIndex, startIndex + pageSize);
+
+  return {
+    items,
+    total,
+    totalPages,
+    currentPage,
+    pageSize,
+  };
 };

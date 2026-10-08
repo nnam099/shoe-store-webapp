@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { getCategories } from '../../services/catalogService';
 import { getAssetUrl } from '../../config/site';
 
@@ -34,9 +35,11 @@ function ShopByCategory() {
         {/* 4 Category Cards: 2 columns on mobile (2x2), 4 columns on desktop */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
           {categories.map((category) => (
-            <div
+            <Link
               key={category.slug}
-              className="group relative flex flex-col bg-white border border-[#e5e5e0] hover:border-[#121212] transition-colors duration-200 overflow-hidden"
+              to={`/products?category=${category.slug}`}
+              className="group relative flex flex-col bg-white border border-[#e5e5e0] hover:border-[#121212] transition-colors duration-200 overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-[#121212]"
+              aria-label={`Khám phá danh mục ${category.name}`}
             >
               {/* Category Silhouette Presentation */}
               <div className="relative aspect-4/3 bg-[#f5f5f3] flex items-center justify-center p-2.5 sm:p-4 md:p-6 overflow-hidden">
@@ -74,7 +77,7 @@ function ShopByCategory() {
                   </span>
                 </div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       </div>

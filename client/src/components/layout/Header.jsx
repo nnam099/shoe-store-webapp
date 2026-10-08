@@ -1,8 +1,22 @@
 import { useState, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { siteConfig } from '../../config/site';
 
 export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const location = useLocation();
+
+  const handleNavClick = (link, e) => {
+    setIsMobileMenuOpen(false);
+    if (link.href.startsWith('/#')) {
+      const hash = link.href.slice(1);
+      if (location.pathname === '/') {
+        e.preventDefault();
+        const el = document.querySelector(hash);
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  };
 
   // Manage body scroll lock when mobile drawer is open with cleanup on unmount
   useEffect(() => {
@@ -38,26 +52,27 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 sm:h-16 lg:h-20 flex items-center justify-between">
         {/* Brand Wordmark */}
         <div className="flex items-center gap-8">
-          <a
-            href="#"
+          <Link
+            to="/"
             className="group flex items-baseline gap-1 focus-visible:outline-2 focus-visible:outline-[#991b1b] focus-visible:outline-offset-4 rounded-sm py-1"
             aria-label={`${siteConfig.name} - Trang chủ`}
           >
             <span className="font-['Space_Grotesk'] text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tighter text-[#121212] group-hover:text-[#991b1b] transition-colors">
               STEP<span className="text-[#991b1b]">/</span>LAB
             </span>
-          </a>
+          </Link>
 
           {/* Desktop Navigation Links */}
           <nav className="hidden md:flex items-center space-x-8" aria-label="Menu chính">
             {siteConfig.navLinks.map((link) => (
-              <a
+              <Link
                 key={link.label}
-                href={link.href}
+                to={link.href}
+                onClick={(e) => handleNavClick(link, e)}
                 className="text-xs font-bold uppercase tracking-widest text-[#525252] hover:text-[#121212] transition-colors py-1 relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-[#991b1b] after:origin-bottom-right after:scale-x-0 hover:after:scale-x-100 hover:after:origin-bottom-left after:transition-transform after:duration-300 focus-visible:outline-2 focus-visible:outline-[#991b1b] focus-visible:outline-offset-4 rounded-sm"
               >
                 {link.label}
-              </a>
+              </Link>
             ))}
           </nav>
         </div>
@@ -105,14 +120,14 @@ export default function Header() {
         <div className="px-6 py-8 space-y-6">
           <div className="flex flex-col space-y-3">
             {siteConfig.navLinks.map((link) => (
-              <a
+              <Link
                 key={link.label}
-                href={link.href}
-                onClick={() => setIsMobileMenuOpen(false)}
+                to={link.href}
+                onClick={(e) => handleNavClick(link, e)}
                 className="text-base sm:text-lg font-bold uppercase tracking-wider text-[#121212] hover:text-[#991b1b] transition-colors py-3 border-b border-[#e6e6e2]/60 focus-visible:outline-2 focus-visible:outline-[#991b1b] focus-visible:outline-offset-2 min-h-[44px] flex items-center"
               >
                 {link.label}
-              </a>
+              </Link>
             ))}
           </div>
 

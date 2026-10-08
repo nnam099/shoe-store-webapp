@@ -18,11 +18,12 @@ export const siteConfig = {
 
   // Active navigation for Storefront Catalog
   navLinks: [
-    { label: 'Trang chủ', href: '#' },
-    { label: 'Thương hiệu', href: '#brands' },
-    { label: 'Danh mục', href: '#categories' },
-    { label: 'Mới về', href: '#new-arrivals' },
-    { label: 'Nổi bật', href: '#featured' },
+    { label: 'Trang chủ', href: '/' },
+    { label: 'Sản phẩm', href: '/products' },
+    { label: 'Thương hiệu', href: '/#brands' },
+    { label: 'Danh mục', href: '/#categories' },
+    { label: 'Mới về', href: '/#new-arrivals' },
+    { label: 'Nổi bật', href: '/#featured' },
   ],
 
   // 4 curated hero slides
