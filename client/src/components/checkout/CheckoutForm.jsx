@@ -194,7 +194,7 @@ const CheckoutForm = forwardRef(function CheckoutForm(
               Thanh toán khi nhận hàng (COD)
             </p>
             <p className="text-[11px] text-[#525252] mt-1 leading-relaxed">
-              Quý khách thanh toán trực tiếp bằng tiền mặt cho nhân viên vận chuyển tại thời điểm nhận và nhận biên nhận đơn hàng.
+              Thanh toán khi đơn hàng được giao đến người nhận.
             </p>
           </div>
         </div>
