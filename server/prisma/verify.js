@@ -1,4 +1,5 @@
 import prisma from '../src/config/db.js';
+import { products as catalogProducts } from '../../client/src/data/catalog.js';
 
 async function verify() {
   try {
@@ -32,6 +33,7 @@ async function verify() {
           include: { category: true },
         },
       },
+      orderBy: { createdAt: 'desc' },
     });
 
     let passA = true;
@@ -103,6 +105,48 @@ async function verify() {
     }
     const passJ = catMap['classic'] === 13 && catMap['lifestyle'] === 12 && catMap['streetwear'] === 10 && catMap['running'] === 5;
     console.log('J. Category counts match exactly:', passJ ? 'PASS' : 'FAIL', catMap);
+
+    // K. Featured Products: exactly 6 products matching approved slug set
+    const featuredProducts = products.filter((p) => p.isFeatured);
+    const featuredSlugs = featuredProducts.map((p) => p.slug).sort();
+    const EXPECTED_FEATURED_SLUGS = [
+      'samba-og',
+      'air-force-1-07',
+      '530',
+      'speedcat-og',
+      'dunk-low-retro',
+      'chuck-70-canvas',
+    ].sort();
+    const passK = featuredProducts.length === 6 && JSON.stringify(featuredSlugs) === JSON.stringify(EXPECTED_FEATURED_SLUGS);
+    console.log(`K. Featured products count = 6 & exact slug set:`, passK ? 'PASS' : 'FAIL');
+    console.log('   Featured count:', featuredProducts.length);
+    console.log('   Featured slugs in DB:', featuredSlugs);
+
+    // L. Product createdAt matches frontend catalog createdAt by slug for all 20 products
+    const catalogMap = new Map(catalogProducts.map((p) => [p.slug, p.createdAt]));
+    let passL = true;
+    const mismatchesL = [];
+
+    for (const p of products) {
+      const catalogCreatedAt = catalogMap.get(p.slug);
+      if (!catalogCreatedAt) {
+        passL = false;
+        mismatchesL.push({ slug: p.slug, error: 'Missing in catalog' });
+        continue;
+      }
+      const dbIso = p.createdAt.toISOString();
+      const catIso = new Date(catalogCreatedAt).toISOString();
+      if (dbIso !== catIso) {
+        passL = false;
+        mismatchesL.push({ slug: p.slug, db: dbIso, catalog: catIso });
+      }
+    }
+    console.log('L. Every Product DB createdAt matches frontend catalog createdAt by slug:', passL ? 'PASS' : 'FAIL');
+    if (!passL) {
+      console.log('   Mismatches:', mismatchesL);
+    } else {
+      console.log('   All 20/20 product createdAt timestamps match catalog exactly.');
+    }
 
     // Transactional safety check
     const userCount = await prisma.user.count();
