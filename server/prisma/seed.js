@@ -174,6 +174,7 @@ export async function seedCatalog() {
       }
 
       // Upsert Variants (9 sizes: EU 36-44)
+      // Stock is only initialized on creation; reseed must preserve live inventory stock.
       for (const v of cw.variants) {
         await prisma.variant.upsert({
           where: {
@@ -182,9 +183,7 @@ export async function seedCatalog() {
               size: v.size,
             },
           },
-          update: {
-            stock: v.stock,
-          },
+          update: {},
           create: {
             colorwayId: colorway.id,
             size: v.size,
