@@ -23,7 +23,9 @@ export function isValidPhone(phone) {
  * - Validates basic field types
  * - Merges duplicates with identical (productSlug, colorwaySlug, size) tuple
  */
-export function normalizeItems(rawItems) {
+export function normalizeItems(rawItems, options = {}) {
+  const { requireExpectedPrice = false } = options;
+
   if (!Array.isArray(rawItems) || rawItems.length === 0 || rawItems.length > 50) {
     throw new AppError('Items must be a non-empty array with at most 50 items', 400, 'VALIDATION_ERROR');
   }
@@ -51,6 +53,18 @@ export function normalizeItems(rawItems) {
       throw new AppError(`Item at index ${i} must have integer quantity >= 1`, 400, 'VALIDATION_ERROR');
     }
 
+    if (requireExpectedPrice) {
+      if (
+        expectedUnitPrice === undefined ||
+        expectedUnitPrice === null ||
+        !Number.isInteger(expectedUnitPrice) ||
+        expectedUnitPrice < 0 ||
+        expectedUnitPrice > 1000000000
+      ) {
+        throw new AppError(`Item at index ${i} has invalid expectedUnitPrice (must be integer >= 0)`, 400, 'VALIDATION_ERROR');
+      }
+    }
+
     const pSlug = productSlug.trim();
     const cSlug = colorwaySlug.trim();
     const s = size.trim();
@@ -58,10 +72,14 @@ export function normalizeItems(rawItems) {
 
     if (map.has(key)) {
       const existing = map.get(key);
-      existing.quantity += quantity;
-      if (expectedUnitPrice !== undefined && existing.expectedUnitPrice === undefined) {
-        existing.expectedUnitPrice = expectedUnitPrice;
+      if (requireExpectedPrice && existing.expectedUnitPrice !== expectedUnitPrice) {
+        throw new AppError(
+          `Conflicting expectedUnitPrice for duplicate item (${pSlug}, ${cSlug}, ${s})`,
+          400,
+          'VALIDATION_ERROR'
+        );
       }
+      existing.quantity += quantity;
     } else {
       map.set(key, {
         productSlug: pSlug,
@@ -253,7 +271,8 @@ export async function computeCheckoutQuote(rawItems) {
 /**
  * Creates a Guest Order atomically in PostgreSQL.
  */
-export async function createGuestOrder(orderInput) {
+export async function createGuestOrder(orderInput, options = {}) {
+  const { codeGenerator = generateOrderCode } = options;
   const {
     receiverName,
     receiverPhone,
@@ -276,131 +295,137 @@ export async function createGuestOrder(orderInput) {
     throw new AppError('Receiver address is required', 400, 'VALIDATION_ERROR');
   }
 
+  // expectedShippingFee is strictly REQUIRED
+  if (
+    expectedShippingFee === undefined ||
+    expectedShippingFee === null ||
+    !Number.isInteger(expectedShippingFee) ||
+    expectedShippingFee < 0
+  ) {
+    throw new AppError('expectedShippingFee is required and must be an integer >= 0', 400, 'VALIDATION_ERROR');
+  }
+
   const trimmedReceiverName = receiverName.trim();
   const trimmedReceiverPhone = receiverPhone.trim();
   const trimmedReceiverAddress = receiverAddress.trim();
   const trimmedNote = note ? String(note).trim() : null;
 
-  // 2. Normalize items
-  const normalized = normalizeItems(rawItems);
+  // 2. Normalize items (enforcing required expectedUnitPrice on every item)
+  const normalized = normalizeItems(rawItems, { requireExpectedPrice: true });
 
-  // 3. Execute whole-order creation in a single Prisma transaction
-  return await prisma.$transaction(async (tx) => {
-    // 3a. Revalidate catalog sellability inside transaction
-    const { resolved, issues } = await resolveCatalogItems(normalized, tx);
+  // 3. Execute whole-order creation in a single Prisma transaction with outer retry for orderCode collision
+  const MAX_RETRIES = 5;
 
-    if (issues.length > 0) {
-      throw new AppError(
-        'One or more items are unavailable for checkout',
-        409,
-        'CHECKOUT_UNAVAILABLE',
-        issues
-      );
-    }
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    const orderCode = codeGenerator();
 
-    const subtotal = resolved.reduce((acc, it) => acc + it.lineTotal, 0);
-    const shippingFee = getShippingFee();
-    const total = subtotal + shippingFee;
+    try {
+      return await prisma.$transaction(async (tx) => {
+        // 3a. Revalidate catalog sellability inside transaction
+        const { resolved, issues } = await resolveCatalogItems(normalized, tx);
 
-    // Fresh quote for CHECKOUT_CHANGED details
-    const freshQuote = {
-      items: resolved.map((it) => ({
-        productSlug: it.productSlug,
-        productName: it.productName,
-        colorwaySlug: it.colorwaySlug,
-        colorwayName: it.colorwayName,
-        size: it.size,
-        quantity: it.quantity,
-        unitPrice: it.unitPrice,
-        lineTotal: it.lineTotal,
-        thumbnail: it.colorwayImage,
-      })),
-      subtotal,
-      shippingFee,
-      total,
-      paymentMethod: 'COD',
-    };
-
-    // 3b. CHECKOUT_CHANGED protection: verify expectedShippingFee
-    if (expectedShippingFee !== undefined && expectedShippingFee !== null) {
-      if (Number(expectedShippingFee) !== shippingFee) {
-        throw new AppError(
-          'Shipping fee has changed since last quote',
-          409,
-          'CHECKOUT_CHANGED',
-          [{ expectedShippingFee, currentShippingFee: shippingFee }],
-          { quote: freshQuote }
-        );
-      }
-    }
-
-    // 3c. CHECKOUT_CHANGED protection: verify expectedUnitPrice for items
-    const priceMismatches = [];
-    for (const it of resolved) {
-      if (it.expectedUnitPrice !== undefined && it.expectedUnitPrice !== null) {
-        if (Number(it.expectedUnitPrice) !== it.unitPrice) {
-          priceMismatches.push({
-            productSlug: it.productSlug,
-            colorwaySlug: it.colorwaySlug,
-            size: it.size,
-            expectedUnitPrice: Number(it.expectedUnitPrice),
-            currentUnitPrice: it.unitPrice,
-          });
+        if (issues.length > 0) {
+          throw new AppError(
+            'One or more items are unavailable for checkout',
+            409,
+            'CHECKOUT_UNAVAILABLE',
+            issues
+          );
         }
-      }
-    }
 
-    if (priceMismatches.length > 0) {
-      throw new AppError(
-        'Product price has changed since last quote',
-        409,
-        'CHECKOUT_CHANGED',
-        priceMismatches,
-        { quote: freshQuote }
-      );
-    }
+        const subtotal = resolved.reduce((acc, it) => acc + it.lineTotal, 0);
+        const shippingFee = getShippingFee();
+        const total = subtotal + shippingFee;
 
-    // 3d. Atomic conditional stock decrement for all items
-    for (const it of resolved) {
-      const updateResult = await tx.variant.updateMany({
-        where: {
-          id: it.variantId,
-          stock: { gte: it.quantity },
-        },
-        data: {
-          stock: { decrement: it.quantity },
-        },
-      });
-
-      if (updateResult.count === 0) {
-        const currentVariant = await tx.variant.findUnique({
-          where: { id: it.variantId },
-        });
-
-        throw new AppError(
-          `Insufficient stock for ${it.productName} (${it.colorwayName}, Size ${it.size})`,
-          409,
-          'INSUFFICIENT_STOCK',
-          [{
+        // Fresh quote for CHECKOUT_CHANGED details
+        const freshQuote = {
+          items: resolved.map((it) => ({
             productSlug: it.productSlug,
+            productName: it.productName,
             colorwaySlug: it.colorwaySlug,
+            colorwayName: it.colorwayName,
             size: it.size,
-            requestedQuantity: it.quantity,
-            availableStock: currentVariant ? currentVariant.stock : 0,
-            reason: 'INSUFFICIENT_STOCK',
-          }]
-        );
-      }
-    }
+            quantity: it.quantity,
+            unitPrice: it.unitPrice,
+            lineTotal: it.lineTotal,
+            thumbnail: it.colorwayImage,
+          })),
+          subtotal,
+          shippingFee,
+          total,
+          paymentMethod: 'COD',
+        };
 
-    // 3e. Generate unique order code with retry (bounded 5 attempts)
-    let createdOrder = null;
-    const MAX_RETRIES = 5;
+        // 3b. CHECKOUT_CHANGED: verify expectedShippingFee BEFORE any stock decrement
+        if (expectedShippingFee !== shippingFee) {
+          throw new AppError(
+            'Shipping fee has changed since last quote',
+            409,
+            'CHECKOUT_CHANGED',
+            [{ expectedShippingFee, currentShippingFee: shippingFee }],
+            { quote: freshQuote }
+          );
+        }
 
-    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-      const orderCode = generateOrderCode();
-      try {
-        createdOrder = await tx.order.create({
+        // 3c. CHECKOUT_CHANGED: verify expectedUnitPrice for items BEFORE any stock decrement
+        const priceMismatches = [];
+        for (const it of resolved) {
+          if (it.expectedUnitPrice !== it.unitPrice) {
+            priceMismatches.push({
+              productSlug: it.productSlug,
+              colorwaySlug: it.colorwaySlug,
+              size: it.size,
+              expectedUnitPrice: it.expectedUnitPrice,
+              currentUnitPrice: it.unitPrice,
+            });
+          }
+        }
+
+        if (priceMismatches.length > 0) {
+          throw new AppError(
+            'Product price has changed since last quote',
+            409,
+            'CHECKOUT_CHANGED',
+            priceMismatches,
+            { quote: freshQuote }
+          );
+        }
+
+        // 3d. Atomic conditional stock decrement for all items
+        for (const it of resolved) {
+          const updateResult = await tx.variant.updateMany({
+            where: {
+              id: it.variantId,
+              stock: { gte: it.quantity },
+            },
+            data: {
+              stock: { decrement: it.quantity },
+            },
+          });
+
+          if (updateResult.count === 0) {
+            const currentVariant = await tx.variant.findUnique({
+              where: { id: it.variantId },
+            });
+
+            throw new AppError(
+              `Insufficient stock for ${it.productName} (${it.colorwayName}, Size ${it.size})`,
+              409,
+              'INSUFFICIENT_STOCK',
+              [{
+                productSlug: it.productSlug,
+                colorwaySlug: it.colorwaySlug,
+                size: it.size,
+                requestedQuantity: it.quantity,
+                availableStock: currentVariant ? currentVariant.stock : 0,
+                reason: 'INSUFFICIENT_STOCK',
+              }]
+            );
+          }
+        }
+
+        // 3e. Create Order + OrderItems + OrderStatusHistory
+        const createdOrder = await tx.order.create({
           data: {
             orderCode,
             userId: null, // GUEST ORDER: ALWAYS NULL
@@ -434,36 +459,44 @@ export async function createGuestOrder(orderInput) {
             orderItems: true,
           },
         });
-        break; // Successfully created
-      } catch (err) {
-        // Handle unique constraint collision on orderCode
-        if (err.code === 'P2002' && err.meta?.target?.includes('order_code')) {
-          if (attempt === MAX_RETRIES - 1) {
-            throw new AppError('Unable to generate unique order code after multiple attempts', 500, 'ORDER_CODE_GENERATION_FAILED');
-          }
-          continue;
-        }
-        throw err;
-      }
-    }
 
-    // 3f. Return committed order representation
-    return {
-      orderCode: createdOrder.orderCode,
-      status: createdOrder.status,
-      subtotal: Number(createdOrder.subtotal),
-      shippingFee: Number(createdOrder.shippingFee),
-      total: Number(createdOrder.total),
-      paymentMethod: createdOrder.paymentMethod,
-      items: createdOrder.orderItems.map((oi) => ({
-        productName: oi.productName,
-        colorwayName: oi.colorwayName,
-        size: oi.size,
-        unitPrice: Number(oi.unitPrice),
-        quantity: oi.quantity,
-        lineTotal: Number(oi.unitPrice) * oi.quantity,
-        colorwayImage: oi.colorwayImage,
-      })),
-    };
-  });
+        // 3f. Return committed order representation
+        return {
+          orderCode: createdOrder.orderCode,
+          status: createdOrder.status,
+          subtotal: Number(createdOrder.subtotal),
+          shippingFee: Number(createdOrder.shippingFee),
+          total: Number(createdOrder.total),
+          paymentMethod: createdOrder.paymentMethod,
+          items: createdOrder.orderItems.map((oi) => ({
+            productName: oi.productName,
+            colorwayName: oi.colorwayName,
+            size: oi.size,
+            unitPrice: Number(oi.unitPrice),
+            quantity: oi.quantity,
+            lineTotal: Number(oi.unitPrice) * oi.quantity,
+            colorwayImage: oi.colorwayImage,
+          })),
+        };
+      });
+    } catch (err) {
+      // Only retry if it is a unique collision specifically on order_code
+      const isOrderCodeCollision =
+        err.code === 'P2002' &&
+        (err.message?.includes('order_code') ||
+         err.message?.includes('orders_order_code_key') ||
+         err.meta?.target?.includes('order_code') ||
+         err.meta?.target?.includes('orderCode'));
+
+      if (isOrderCodeCollision) {
+        if (attempt === MAX_RETRIES - 1) {
+          throw new AppError('Unable to generate unique order code after multiple attempts', 500, 'ORDER_CODE_GENERATION_FAILED');
+        }
+        continue; // Retries with a brand new transaction and fresh code
+      }
+
+      // Any other error (AppError, DB error, etc.) must not retry, re-throw immediately
+      throw err;
+    }
+  }
 }
