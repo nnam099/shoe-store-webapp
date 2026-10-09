@@ -325,39 +325,17 @@ export default function CheckoutPage() {
           </p>
         </div>
       ) : (
-        /* 2-Column Desktop / 1-Column Mobile Layout */
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
-          {/* Left Column: Form & COD */}
-          <div className="lg:col-span-7 space-y-6">
-            <CheckoutForm
-              ref={{ nameRef, phoneRef, addressRef }}
-              formData={formData}
-              formErrors={formErrors}
-              onChange={handleInputChange}
-              onSubmit={handleSubmit}
-              submitting={submitting}
-              disabled={loadingQuote || !!quoteError}
-              submitError={submitError}
-            />
-
-            <div className="pt-2">
-              <Link
-                to="/cart"
-                className="inline-flex items-center gap-1.5 text-xs text-[#737373] hover:text-[#121212] transition-colors py-2"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                </svg>
-                <span>Quay lại giỏ hàng</span>
-              </Link>
-            </div>
-          </div>
-
-          {/* Right Column: Sticky Summary */}
-          <div className="lg:col-span-5 lg:sticky lg:top-28">
-            <CheckoutSummary quote={quote} loading={loadingQuote} />
-          </div>
-        </div>
+        <CheckoutForm
+          ref={{ nameRef, phoneRef, addressRef }}
+          formData={formData}
+          formErrors={formErrors}
+          onChange={handleInputChange}
+          onSubmit={handleSubmit}
+          submitting={submitting}
+          disabled={loadingQuote || !!quoteError}
+          submitError={submitError}
+          summary={<CheckoutSummary quote={quote} loading={loadingQuote} />}
+        />
       )}
     </div>
   );

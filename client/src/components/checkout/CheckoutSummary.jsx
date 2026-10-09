@@ -93,12 +93,9 @@ function CheckoutSummary({ quote, loading }) {
         </div>
 
         <div className="border-t border-[#e5e5e0] pt-3 flex justify-between items-baseline">
-          <div>
-            <span className="block text-xs font-extrabold uppercase tracking-wider text-[#121212]">
-              Tổng thanh toán:
-            </span>
-            <span className="text-[10px] text-[#737373]">(Đã bao gồm VAT và phí COD)</span>
-          </div>
+          <span className="text-xs font-extrabold uppercase tracking-wider text-[#121212]">
+            Tổng thanh toán:
+          </span>
           <span className="text-lg font-black text-[#121212] tracking-tight">
             {formatPrice(total)}
           </span>

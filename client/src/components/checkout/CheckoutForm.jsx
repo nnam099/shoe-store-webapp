@@ -1,9 +1,13 @@
 import { forwardRef } from 'react';
+import { Link } from 'react-router-dom';
 
 /**
  * CheckoutForm Component
- * Renders Guest recipient information fields, COD payment section, and Place Order button.
- * Uses semantic form controls, inline validation errors, and accessible ARIA attributes.
+ * Renders Guest recipient information fields, COD payment section, Order Summary slot,
+ * and Place Order button.
+ * Responsive layout:
+ * - Mobile (<1024px): Recipient -> COD -> Order Summary -> Submit CTA -> Back to Cart
+ * - Desktop (>=1024px): 2-column layout (Left: Recipient, COD, Submit CTA, Back to Cart; Right: sticky Summary)
  */
 const CheckoutForm = forwardRef(function CheckoutForm(
   {
@@ -14,14 +18,21 @@ const CheckoutForm = forwardRef(function CheckoutForm(
     submitting,
     disabled,
     submitError,
+    summary,
   },
   ref
 ) {
   const { nameRef, phoneRef, addressRef } = ref || {};
 
   return (
-    <form onSubmit={onSubmit} noValidate className="space-y-8">
-      {/* Recipient Information Section */}
+    <form
+      onSubmit={onSubmit}
+      noValidate
+      className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start"
+    >
+      {/* 1. Recipient Information & COD Payment (Left Column on Desktop, Top on Mobile) */}
+      <div className="lg:col-span-7 space-y-6 sm:space-y-8">
+        {/* Recipient Information Section */}
       <div className="bg-white border border-[#e5e5e0] p-6 sm:p-7 rounded-xs shadow-2xs">
         <div className="border-b border-[#e5e5e0] pb-3 mb-6">
           <h2 className="text-xs font-extrabold uppercase tracking-widest text-[#121212]">
@@ -199,55 +210,77 @@ const CheckoutForm = forwardRef(function CheckoutForm(
           </div>
         </div>
       </div>
+    </div>
 
-      {/* Form-level Error Alert (if any) */}
-      {submitError && (
-        <div
-          role="alert"
-          className="p-4 bg-[#fef2f2] border border-[#fecaca] text-[#b91c1c] text-xs font-medium rounded-xs leading-relaxed"
-        >
-          {submitError}
-        </div>
-      )}
+    {/* 2. Order Summary (Right Column sticky on desktop; between COD and Place Order CTA on mobile) */}
+      <div className="lg:col-span-5 lg:col-start-8 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-28">
+        {summary}
+      </div>
 
-      {/* Place Order CTA Button */}
-      <button
-        type="submit"
-        disabled={submitting || disabled}
-        className={`w-full min-h-[48px] px-6 py-3 text-xs font-bold uppercase tracking-widest text-white rounded-xs transition-all flex items-center justify-center gap-2 select-none shadow-xs ${
-          submitting || disabled
-            ? 'bg-[#a3a3a3] cursor-not-allowed opacity-80'
-            : 'bg-[#121212] hover:bg-[#262626] active:scale-[0.99] cursor-pointer'
-        }`}
-      >
-        {submitting ? (
-          <>
-            <svg
-              className="w-4 h-4 animate-spin text-white"
-              fill="none"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8v8H4z"
-              />
-            </svg>
-            <span>Đang xử lý...</span>
-          </>
-        ) : (
-          <span>Đặt hàng (COD)</span>
+      {/* 3. Actions: Submit Error, Place Order CTA & Back to Cart (Left Column bottom on desktop; after Summary on mobile) */}
+      <div className="lg:col-span-7 lg:col-start-1 lg:row-start-2 space-y-4">
+        {/* Form-level Error Alert (if any) */}
+        {submitError && (
+          <div
+            role="alert"
+            className="p-4 bg-[#fef2f2] border border-[#fecaca] text-[#b91c1c] text-xs font-medium rounded-xs leading-relaxed"
+          >
+            {submitError}
+          </div>
         )}
-      </button>
+
+        {/* Place Order CTA Button */}
+        <button
+          type="submit"
+          disabled={submitting || disabled}
+          className={`w-full min-h-[48px] px-6 py-3 text-xs font-bold uppercase tracking-widest text-white rounded-xs transition-all flex items-center justify-center gap-2 select-none shadow-xs ${
+            submitting || disabled
+              ? 'bg-[#a3a3a3] cursor-not-allowed opacity-80'
+              : 'bg-[#121212] hover:bg-[#262626] active:scale-[0.99] cursor-pointer'
+          }`}
+        >
+          {submitting ? (
+            <>
+              <svg
+                className="w-4 h-4 animate-spin text-white"
+                fill="none"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v8H4z"
+                />
+              </svg>
+              <span>Đang xử lý...</span>
+            </>
+          ) : (
+            <span>Đặt hàng (COD)</span>
+          )}
+        </button>
+
+        {/* Secondary Link to Cart */}
+        <div className="pt-1">
+          <Link
+            to="/cart"
+            className="inline-flex items-center gap-1.5 text-xs text-[#737373] hover:text-[#121212] transition-colors py-1.5"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            <span>Quay lại giỏ hàng</span>
+          </Link>
+        </div>
+      </div>
     </form>
   );
 });

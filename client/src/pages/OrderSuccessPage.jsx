@@ -66,7 +66,7 @@ export default function OrderSuccessPage() {
           Đặt hàng thành công
         </h1>
         <p className="text-xs text-[#525252] max-w-md mx-auto leading-relaxed">
-          Cảm ơn bạn đã mua sắm tại STEP/LAB. Đơn hàng của bạn đã được ghi nhận vào hệ thống và đang chờ xử lý giao hàng.
+          Cảm ơn bạn đã mua sắm tại STEP/LAB. Đơn hàng của bạn đã được ghi nhận và đang chờ xử lý.
         </p>
       </div>
 
@@ -111,7 +111,7 @@ export default function OrderSuccessPage() {
           <div>
             <span className="text-[#737373] block mb-1">Trạng thái đơn:</span>
             <span className="inline-flex items-center px-2 py-0.5 rounded-xs font-bold bg-[#fef3c7] text-[#92400e] text-[11px]">
-              Chờ xử lý (PENDING)
+              Chờ xử lý
             </span>
           </div>
 
