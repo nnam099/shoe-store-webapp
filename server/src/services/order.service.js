@@ -500,3 +500,188 @@ export async function createGuestOrder(orderInput, options = {}) {
     }
   }
 }
+
+/**
+ * Strips formatting characters (spaces, -, (, ), .) for phone comparison.
+ * Preserves actual characters (such as leading +, digits) without country-code transformation.
+ */
+export function stripPhoneFormatting(phone) {
+  if (typeof phone !== 'string') return '';
+  return phone.trim().replace(/[\s\-().]/g, '');
+}
+
+/**
+ * Compares stored receiverPhone with input phone.
+ * Returns true if stripped versions match exactly.
+ */
+export function isPhoneMatch(storedPhone, inputPhone) {
+  if (!storedPhone || !inputPhone) return false;
+  return stripPhoneFormatting(storedPhone) === stripPhoneFormatting(inputPhone);
+}
+
+/**
+ * Serializes an Order into a privacy-preserving, Guest-safe public representation.
+ * Explicitly omits: receiverName, receiverAddress, receiverPhone, receiverPhoneMasked, note, userId, internal IDs.
+ */
+export function serializePublicOrder(order) {
+  const isCancellable =
+    (order.status === 'PENDING' || order.status === 'PREPARING') &&
+    order.stockRestoredAt === null;
+
+  return {
+    orderCode: order.orderCode,
+    status: order.status,
+    createdAt: order.createdAt,
+    cancelledAt: order.cancelledAt,
+    subtotal: Math.round(Number(order.subtotal)),
+    shippingFee: Math.round(Number(order.shippingFee)),
+    total: Math.round(Number(order.total)),
+    paymentMethod: order.paymentMethod,
+    cancellable: isCancellable,
+    items: (order.orderItems || []).map((item) => {
+      const unitPrice = Math.round(Number(item.unitPrice));
+      const quantity = item.quantity;
+      const lineTotal = unitPrice * quantity;
+      return {
+        productName: item.productName,
+        colorwayName: item.colorwayName,
+        size: item.size,
+        unitPrice,
+        quantity,
+        lineTotal,
+        thumbnail: item.colorwayImage || null,
+      };
+    }),
+  };
+}
+
+/**
+ * Looks up a guest order by orderCode and receiverPhone.
+ * Enforces privacy protection (anti-enumeration) by returning neutral 404 for wrong code or mismatched phone.
+ */
+export async function lookupGuestOrder({ orderCode, receiverPhone }) {
+  if (typeof orderCode !== 'string' || !orderCode.trim()) {
+    throw new AppError('orderCode is required', 400, 'VALIDATION_ERROR');
+  }
+  const trimmedCode = orderCode.trim();
+  if (trimmedCode.length > 50) {
+    throw new AppError('orderCode exceeds maximum length', 400, 'VALIDATION_ERROR');
+  }
+
+  if (typeof receiverPhone !== 'string' || !receiverPhone.trim()) {
+    throw new AppError('receiverPhone is required', 400, 'VALIDATION_ERROR');
+  }
+  const trimmedPhone = receiverPhone.trim();
+  if (!isValidPhone(trimmedPhone)) {
+    throw new AppError('receiverPhone is invalid', 400, 'VALIDATION_ERROR');
+  }
+
+  const normalizedOrderCode = trimmedCode.toUpperCase();
+
+  const order = await prisma.order.findUnique({
+    where: { orderCode: normalizedOrderCode },
+    include: {
+      orderItems: true,
+    },
+  });
+
+  if (!order || !isPhoneMatch(order.receiverPhone, trimmedPhone)) {
+    throw new AppError('Không tìm thấy đơn hàng với thông tin đã cung cấp.', 404, 'ORDER_NOT_FOUND');
+  }
+
+  return serializePublicOrder(order);
+}
+
+/**
+ * Cancels a guest order atomically.
+ * Validates possession, checks eligibility (PENDING or PREPARING and stockRestoredAt === null),
+ * updates status to CANCELLED, restores Variant stock by OrderItem quantity,
+ * and logs an OrderStatusHistory record in a single transaction.
+ */
+export async function cancelGuestOrder({ orderCode, receiverPhone }) {
+  if (typeof orderCode !== 'string' || !orderCode.trim()) {
+    throw new AppError('orderCode is required', 400, 'VALIDATION_ERROR');
+  }
+  const trimmedCode = orderCode.trim();
+  if (trimmedCode.length > 50) {
+    throw new AppError('orderCode exceeds maximum length', 400, 'VALIDATION_ERROR');
+  }
+
+  if (typeof receiverPhone !== 'string' || !receiverPhone.trim()) {
+    throw new AppError('receiverPhone is required', 400, 'VALIDATION_ERROR');
+  }
+  const trimmedPhone = receiverPhone.trim();
+  if (!isValidPhone(trimmedPhone)) {
+    throw new AppError('receiverPhone is invalid', 400, 'VALIDATION_ERROR');
+  }
+
+  const normalizedOrderCode = trimmedCode.toUpperCase();
+
+  const order = await prisma.order.findUnique({
+    where: { orderCode: normalizedOrderCode },
+    include: {
+      orderItems: true,
+    },
+  });
+
+  if (!order || !isPhoneMatch(order.receiverPhone, trimmedPhone)) {
+    throw new AppError('Không tìm thấy đơn hàng với thông tin đã cung cấp.', 404, 'ORDER_NOT_FOUND');
+  }
+
+  // Pre-transaction check for clear failure if order is already non-cancellable
+  const isCancellable =
+    (order.status === 'PENDING' || order.status === 'PREPARING') &&
+    order.stockRestoredAt === null;
+
+  if (!isCancellable) {
+    throw new AppError('Đơn hàng không thể hủy ở trạng thái hiện tại.', 409, 'ORDER_NOT_CANCELLABLE');
+  }
+
+  const now = new Date();
+
+  return await prisma.$transaction(async (tx) => {
+    // Conditional transition (compare-and-set)
+    const updateResult = await tx.order.updateMany({
+      where: {
+        id: order.id,
+        status: { in: ['PENDING', 'PREPARING'] },
+        stockRestoredAt: null,
+      },
+      data: {
+        status: 'CANCELLED',
+        cancelledAt: now,
+        stockRestoredAt: now,
+      },
+    });
+
+    if (updateResult.count === 0) {
+      throw new AppError('Đơn hàng không thể hủy ở trạng thái hiện tại.', 409, 'ORDER_NOT_CANCELLABLE');
+    }
+
+    // Restore stock based ONLY on OrderItem.variantId and OrderItem.quantity
+    for (const item of order.orderItems) {
+      await tx.variant.update({
+        where: { id: item.variantId },
+        data: {
+          stock: { increment: item.quantity },
+        },
+      });
+    }
+
+    // Create exactly one OrderStatusHistory record
+    await tx.orderStatusHistory.create({
+      data: {
+        orderId: order.id,
+        status: 'CANCELLED',
+        changedAt: now,
+      },
+    });
+
+    return {
+      orderCode: order.orderCode,
+      status: 'CANCELLED',
+      cancelledAt: now,
+      cancellable: false,
+    };
+  });
+}
