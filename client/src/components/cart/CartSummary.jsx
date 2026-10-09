@@ -35,20 +35,29 @@ function CartSummary({ subtotal, totalQuantity, hasOutOfStock }) {
       {/* Out of Stock Notice */}
       {hasOutOfStock && (
         <div className="p-3 bg-[#fef2f2] border border-[#fecaca] text-[#b91c1c] text-xs font-medium rounded-xs">
-          Có sản phẩm hết hàng trong giỏ. Vui lòng kiểm tra lại trước khi tiếp tục.
+          Vui lòng xử lý sản phẩm hết hàng trước khi thanh toán.
         </div>
       )}
 
-      {/* Direct Shopping CTA */}
-      <div className="pt-2">
+      {/* Action Buttons */}
+      <div className="pt-2 space-y-2">
+        {totalQuantity > 0 && !hasOutOfStock && (
+          <Link
+            to="/checkout"
+            className="w-full h-11 bg-[#121212] hover:bg-[#262626] text-white text-xs font-bold uppercase tracking-wider rounded-xs transition-colors flex items-center justify-center gap-2 shadow-2xs select-none"
+          >
+            <span>Tiến hành thanh toán</span>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </Link>
+        )}
+
         <Link
           to="/products"
-          className="w-full h-11 bg-[#121212] hover:bg-[#262626] text-white text-xs font-bold uppercase tracking-wider rounded-xs transition-colors flex items-center justify-center gap-2 shadow-2xs select-none"
+          className="w-full h-11 border border-[#e5e5e0] hover:bg-[#f5f5f3] text-[#121212] text-xs font-bold uppercase tracking-wider rounded-xs transition-colors flex items-center justify-center gap-2 select-none"
         >
           <span>Tiếp tục mua sắm</span>
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-          </svg>
         </Link>
       </div>
     </div>
