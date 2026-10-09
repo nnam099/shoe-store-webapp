@@ -74,7 +74,8 @@ function CartPage() {
     };
 
     const handleStorage = (e) => {
-      if (!e.key || e.key === CART_STORAGE_KEY) {
+      // Only react if cart storage key was updated or localStorage was cleared (e.key === null)
+      if (e.key === CART_STORAGE_KEY || e.key === null) {
         handleSync();
       }
     };
@@ -178,7 +179,7 @@ function CartPage() {
               <div className="pt-4 flex flex-wrap items-center justify-between gap-4">
                 <Link
                   to="/products"
-                  className="text-xs font-bold text-[#121212] hover:text-[#b91c1c] underline underline-offset-4 transition-colors inline-flex items-center gap-1.5"
+                  className="min-h-[44px] py-2 text-xs font-bold text-[#121212] hover:text-[#b91c1c] underline underline-offset-4 transition-colors inline-flex items-center gap-1.5"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -186,13 +187,13 @@ function CartPage() {
                   <span>Tiếp tục chọn sản phẩm</span>
                 </Link>
 
-                {/* Two-step Clear Cart Confirmation */}
+                {/* Two-step Clear Cart Confirmation (Touch Targets >= 44px) */}
                 <div>
                   {!isConfirmingClear ? (
                     <button
                       type="button"
                       onClick={() => setIsConfirmingClear(true)}
-                      className="text-xs font-semibold text-[#737373] hover:text-[#b91c1c] transition-colors cursor-pointer select-none"
+                      className="min-h-[44px] py-2 px-3 inline-flex items-center text-xs font-semibold text-[#737373] hover:text-[#b91c1c] transition-colors cursor-pointer select-none"
                     >
                       Xóa toàn bộ giỏ hàng
                     </button>
@@ -202,14 +203,14 @@ function CartPage() {
                       <button
                         type="button"
                         onClick={handleConfirmClear}
-                        className="px-2 py-0.5 bg-[#b91c1c] text-white font-bold rounded-xs hover:bg-[#991b1b] transition-colors cursor-pointer"
+                        className="min-h-[44px] px-3 bg-[#b91c1c] text-white font-bold rounded-xs hover:bg-[#991b1b] transition-colors cursor-pointer inline-flex items-center"
                       >
                         Xác nhận
                       </button>
                       <button
                         type="button"
                         onClick={() => setIsConfirmingClear(false)}
-                        className="px-2 py-0.5 bg-white text-[#525252] border border-[#e5e5e0] font-medium rounded-xs hover:bg-[#f5f5f3] transition-colors cursor-pointer"
+                        className="min-h-[44px] px-3 bg-white text-[#525252] border border-[#e5e5e0] font-medium rounded-xs hover:bg-[#f5f5f3] transition-colors cursor-pointer inline-flex items-center"
                       >
                         Hủy
                       </button>

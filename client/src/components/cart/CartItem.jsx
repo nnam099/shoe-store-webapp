@@ -76,12 +76,12 @@ function CartItem({ item, onUpdateQuantity, onRemove }) {
             </p>
           </div>
 
-          {/* Remove Button */}
+          {/* Remove Button (Touch Target >= 44x44px) */}
           <button
             type="button"
             onClick={() => onRemove(id)}
             aria-label={`Xóa ${productName} khỏi giỏ hàng`}
-            className="p-1.5 text-[#737373] hover:text-[#b91c1c] transition-colors rounded-xs cursor-pointer select-none"
+            className="min-w-[44px] min-h-[44px] w-11 h-11 flex items-center justify-center text-[#737373] hover:text-[#b91c1c] transition-colors rounded-xs cursor-pointer select-none"
             title="Xóa sản phẩm"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -114,7 +114,7 @@ function CartItem({ item, onUpdateQuantity, onRemove }) {
 
         {/* Bottom Row: Quantity Controls & Price */}
         <div className="mt-4 pt-3 border-t border-[#f5f5f3] flex flex-wrap items-center justify-between gap-3">
-          {/* Quantity Controls */}
+          {/* Quantity Controls (Touch Target >= 44x44px for buttons) */}
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-[#737373] uppercase tracking-wider hidden sm:inline">
               SL:
@@ -129,7 +129,7 @@ function CartItem({ item, onUpdateQuantity, onRemove }) {
                 disabled={isMinusDisabled}
                 onClick={() => onUpdateQuantity(id, effectiveQuantity - 1, currentStock)}
                 aria-label="Giảm số lượng"
-                className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center text-[#121212] hover:bg-[#f5f5f3] disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer select-none"
+                className="min-w-[44px] min-h-[44px] w-11 h-11 flex items-center justify-center text-[#121212] hover:bg-[#f5f5f3] disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer select-none"
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M20 12H4" />
@@ -137,7 +137,7 @@ function CartItem({ item, onUpdateQuantity, onRemove }) {
               </button>
 
               <span
-                className="w-10 h-9 sm:w-11 sm:h-10 flex items-center justify-center text-xs sm:text-sm font-extrabold text-[#121212] border-x border-[#e5e5e0] select-none"
+                className="min-w-[44px] h-11 px-2 flex items-center justify-center text-xs sm:text-sm font-extrabold text-[#121212] border-x border-[#e5e5e0] select-none"
                 aria-live="polite"
               >
                 {effectiveQuantity}
@@ -148,7 +148,7 @@ function CartItem({ item, onUpdateQuantity, onRemove }) {
                 disabled={isPlusDisabled}
                 onClick={() => onUpdateQuantity(id, effectiveQuantity + 1, currentStock)}
                 aria-label="Tăng số lượng"
-                className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center text-[#121212] hover:bg-[#f5f5f3] disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer select-none"
+                className="min-w-[44px] min-h-[44px] w-11 h-11 flex items-center justify-center text-[#121212] hover:bg-[#f5f5f3] disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer select-none"
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />

@@ -17,8 +17,8 @@ export function useCartCount() {
     };
 
     const handleStorage = (e) => {
-      // Only react if our cart storage key was updated or cleared
-      if (!e.key || e.key === CART_STORAGE_KEY) {
+      // Only react if our cart storage key was updated or localStorage was cleared (e.key === null)
+      if (e.key === CART_STORAGE_KEY || e.key === null) {
         setCount(getCartCount());
       }
     };
