@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
   getCart,
@@ -19,39 +19,47 @@ import CartSummary from '../components/cart/CartSummary';
 import EmptyCart from '../components/cart/EmptyCart';
 
 /**
- * Loads cart from storage and normalizes any stale identities or clamped quantities.
- * Ensures storage is normalized synchronously before first render.
+ * Pure calculation of normalized cart and its metadata without side effects.
+ * Reads localStorage via getCart(), runs pure catalog hydration and normalization.
+ * Returns normalized items and whether changes are pending persistence.
  */
-function loadAndNormalizeCart() {
-  const raw = getCart();
-  const hydrated = hydrateCartItems(raw);
-  const { normalizedCart, hasChanges, prunedCount } = getNormalizedCart(hydrated);
-
-  if (hasChanges) {
-    saveCart(normalizedCart);
-  }
+function computeNormalizedCart() {
+  const stored = getCart();
+  const hydrated = hydrateCartItems(stored);
+  const normalized = getNormalizedCart(hydrated);
 
   return {
-    items: normalizedCart,
-    hadPruned: prunedCount > 0,
+    items: normalized.normalizedCart,
+    pendingNormalization: normalized.hasChanges,
+    hadPruned: normalized.prunedCount > 0,
+    hadClamped: normalized.clampedCount > 0,
   };
 }
 
 /**
  * CartPage Component
  * Main cart experience for STEP/LAB storefront.
- * Features synchronous initial hydration, continuous catalog revalidation,
- * controlled normalization of invalid/stale identities, and cross-tab/same-tab sync.
+ * Features pure initial hydration, continuous catalog revalidation,
+ * post-mount normalization persistence of invalid/stale identities, and cross-tab/same-tab sync.
  */
 function CartPage() {
-  // Synchronous initial load & normalization to prevent cascading renders and empty flashes
-  const [cartState, setCartState] = useState(() => loadAndNormalizeCart());
+  // Pure initial state computation without side effects (no storage writes or event dispatch in render phase)
+  const [cartState, setCartState] = useState(() => computeNormalizedCart());
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
   const [normalizationNotice, setNormalizationNotice] = useState(() =>
     cartState.hadPruned ? 'Một số sản phẩm không còn khả dụng đã được cập nhật khỏi giỏ hàng.' : null
   );
 
+  const pendingNormalizationRef = useRef(cartState.pendingNormalization);
   const storedItems = cartState.items;
+
+  // Persist normalization changes safely after mount if stale rows were pruned or quantities clamped
+  useEffect(() => {
+    if (pendingNormalizationRef.current) {
+      pendingNormalizationRef.current = false;
+      saveCart(cartState.items);
+    }
+  }, [cartState.items]);
 
   // Auto-dismiss normalization notice after 4 seconds
   useEffect(() => {
@@ -66,7 +74,7 @@ function CartPage() {
   // Listen for cart mutations in same tab or other tabs
   useEffect(() => {
     const handleSync = () => {
-      const next = loadAndNormalizeCart();
+      const next = computeNormalizedCart();
       setCartState(next);
       if (next.hadPruned) {
         setNormalizationNotice('Một số sản phẩm không còn khả dụng đã được cập nhật khỏi giỏ hàng.');
@@ -102,17 +110,32 @@ function CartPage() {
   // Handlers
   const handleUpdateQuantity = (id, newQuantity, stockLimit) => {
     const updated = updateCartItemQuantity(id, newQuantity, stockLimit);
-    setCartState({ items: updated, hadPruned: false });
+    setCartState({
+      items: updated,
+      pendingNormalization: false,
+      hadPruned: false,
+      hadClamped: false,
+    });
   };
 
   const handleRemoveItem = (id) => {
     const updated = removeCartItem(id);
-    setCartState({ items: updated, hadPruned: false });
+    setCartState({
+      items: updated,
+      pendingNormalization: false,
+      hadPruned: false,
+      hadClamped: false,
+    });
   };
 
   const handleConfirmClear = () => {
     clearCart();
-    setCartState({ items: [], hadPruned: false });
+    setCartState({
+      items: [],
+      pendingNormalization: false,
+      hadPruned: false,
+      hadClamped: false,
+    });
     setIsConfirmingClear(false);
   };
 
