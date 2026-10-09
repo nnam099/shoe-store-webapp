@@ -198,48 +198,35 @@ function CartPage() {
                 ))}
               </div>
 
-              {/* Clear Cart Action Bar */}
-              <div className="pt-4 flex flex-wrap items-center justify-between gap-4">
-                <Link
-                  to="/products"
-                  className="min-h-[44px] py-2 text-xs font-bold text-[#121212] hover:text-[#b91c1c] underline underline-offset-4 transition-colors inline-flex items-center gap-1.5"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                  </svg>
-                  <span>Tiếp tục chọn sản phẩm</span>
-                </Link>
-
-                {/* Two-step Clear Cart Confirmation (Touch Targets >= 44px) */}
-                <div>
-                  {!isConfirmingClear ? (
+              {/* Clear Cart Action Bar (Touch Targets >= 44px) */}
+              <div className="pt-2 sm:pt-4 flex justify-end">
+                {!isConfirmingClear ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsConfirmingClear(true)}
+                    className="min-h-[44px] py-2 px-2 sm:px-3 inline-flex items-center text-xs font-semibold text-[#737373] hover:text-[#b91c1c] transition-colors cursor-pointer select-none"
+                  >
+                    Xóa toàn bộ giỏ hàng
+                  </button>
+                ) : (
+                  <div className="inline-flex items-center gap-2 p-1.5 bg-[#fef2f2] border border-[#fecaca] rounded-xs text-xs">
+                    <span className="font-semibold text-[#b91c1c]">Xóa toàn bộ?</span>
                     <button
                       type="button"
-                      onClick={() => setIsConfirmingClear(true)}
-                      className="min-h-[44px] py-2 px-3 inline-flex items-center text-xs font-semibold text-[#737373] hover:text-[#b91c1c] transition-colors cursor-pointer select-none"
+                      onClick={handleConfirmClear}
+                      className="min-h-[44px] px-3 bg-[#b91c1c] text-white font-bold rounded-xs hover:bg-[#991b1b] transition-colors cursor-pointer inline-flex items-center"
                     >
-                      Xóa toàn bộ giỏ hàng
+                      Xác nhận
                     </button>
-                  ) : (
-                    <div className="inline-flex items-center gap-2 p-1.5 bg-[#fef2f2] border border-[#fecaca] rounded-xs text-xs">
-                      <span className="font-semibold text-[#b91c1c]">Xóa toàn bộ?</span>
-                      <button
-                        type="button"
-                        onClick={handleConfirmClear}
-                        className="min-h-[44px] px-3 bg-[#b91c1c] text-white font-bold rounded-xs hover:bg-[#991b1b] transition-colors cursor-pointer inline-flex items-center"
-                      >
-                        Xác nhận
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setIsConfirmingClear(false)}
-                        className="min-h-[44px] px-3 bg-white text-[#525252] border border-[#e5e5e0] font-medium rounded-xs hover:bg-[#f5f5f3] transition-colors cursor-pointer inline-flex items-center"
-                      >
-                        Hủy
-                      </button>
-                    </div>
-                  )}
-                </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsConfirmingClear(false)}
+                      className="min-h-[44px] px-3 bg-white text-[#525252] border border-[#e5e5e0] font-medium rounded-xs hover:bg-[#f5f5f3] transition-colors cursor-pointer inline-flex items-center"
+                    >
+                      Hủy
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
