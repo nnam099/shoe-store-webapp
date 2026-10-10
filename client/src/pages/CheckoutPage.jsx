@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { getCart, clearCart } from '../utils/cartStorage';
 import { getCheckoutQuote, createGuestOrder } from '../services/checkoutService';
 import { saveOrderConfirmation } from '../utils/checkoutSession';
+import { addRecentOrder } from '../utils/recentOrders';
 import CheckoutForm from '../components/checkout/CheckoutForm';
 import CheckoutSummary from '../components/checkout/CheckoutSummary';
 
@@ -206,6 +207,17 @@ export default function CheckoutPage() {
 
     try {
       const orderResult = await createGuestOrder(orderPayload);
+
+      if (
+        !orderResult ||
+        typeof orderResult.orderCode !== 'string' ||
+        !orderResult.orderCode.trim()
+      ) {
+        throw new Error('Invalid successful order response');
+      }
+
+      // Local shortcut time only; authoritative Order.createdAt comes from lookup.
+      addRecentOrder(orderResult.orderCode, new Date().toISOString());
 
       // Save confirmation snapshot, clear cart, and navigate to success route
       saveOrderConfirmation(orderResult);

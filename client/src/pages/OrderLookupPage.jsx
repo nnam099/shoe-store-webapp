@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import OrderLookupForm from '../components/order/OrderLookupForm';
 import OrderDetailCard from '../components/order/OrderDetailCard';
 import CancelConfirmDialog from '../components/order/CancelConfirmDialog';
+import RecentOrders from '../components/order/RecentOrders';
 import { lookupGuestOrder, cancelGuestOrder } from '../services/orderService';
+import { getRecentOrders } from '../utils/recentOrders';
 
 /**
  * OrderLookupPage Component
@@ -14,6 +16,8 @@ export default function OrderLookupPage() {
   const [orderCode, setOrderCode] = useState('');
   const [receiverPhone, setReceiverPhone] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
+  const [recentOrders] = useState(() => getRecentOrders());
+  const receiverPhoneRef = useRef(null);
 
   // Lookup state
   const [loading, setLoading] = useState(false);
@@ -25,6 +29,22 @@ export default function OrderLookupPage() {
   const [cancelling, setCancelling] = useState(false);
   const [cancelSuccessMessage, setCancelSuccessMessage] = useState(null);
   const [cancelErrorMessage, setCancelErrorMessage] = useState(null);
+
+  /**
+   * Prefills only the remembered order code. Ownership verification remains
+   * the existing receiverPhone + explicit form submission flow.
+   */
+  const handleRecentOrderSelect = (recentOrderCode) => {
+    setOrderCode(recentOrderCode);
+    setFieldErrors({});
+    setLookupError(null);
+    setOrder(null);
+    setCancelSuccessMessage(null);
+    setCancelErrorMessage(null);
+    setIsCancelDialogOpen(false);
+
+    requestAnimationFrame(() => receiverPhoneRef.current?.focus());
+  };
 
   /**
    * Client-side UX validation before sending request
@@ -174,24 +194,35 @@ export default function OrderLookupPage() {
 
       {/* Main Content Area */}
       <div className="space-y-8">
-        {/* Search Form */}
-        <div className="max-w-xl">
-          <OrderLookupForm
-            orderCode={orderCode}
-            receiverPhone={receiverPhone}
-            onOrderCodeChange={(val) => {
-              setOrderCode(val);
-              if (fieldErrors.orderCode) setFieldErrors((prev) => ({ ...prev, orderCode: '' }));
-            }}
-            onPhoneChange={(val) => {
-              setReceiverPhone(val);
-              if (fieldErrors.receiverPhone) setFieldErrors((prev) => ({ ...prev, receiverPhone: '' }));
-            }}
-            onSubmit={handleLookupSubmit}
-            loading={loading}
-            fieldErrors={fieldErrors}
-            lookupError={lookupError}
-          />
+        <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1.25fr)_minmax(240px,0.75fr)] gap-6 items-start">
+          {/* Mobile-first recovery shortcut; moves beside the form on desktop. */}
+          <div className="md:order-2 min-w-0">
+            <RecentOrders
+              orders={recentOrders}
+              onSelect={handleRecentOrderSelect}
+            />
+          </div>
+
+          {/* Search Form */}
+          <div className="md:order-1 min-w-0">
+            <OrderLookupForm
+              orderCode={orderCode}
+              receiverPhone={receiverPhone}
+              onOrderCodeChange={(val) => {
+                setOrderCode(val);
+                if (fieldErrors.orderCode) setFieldErrors((prev) => ({ ...prev, orderCode: '' }));
+              }}
+              onPhoneChange={(val) => {
+                setReceiverPhone(val);
+                if (fieldErrors.receiverPhone) setFieldErrors((prev) => ({ ...prev, receiverPhone: '' }));
+              }}
+              onSubmit={handleLookupSubmit}
+              loading={loading}
+              fieldErrors={fieldErrors}
+              lookupError={lookupError}
+              receiverPhoneRef={receiverPhoneRef}
+            />
+          </div>
         </div>
 
         {/* Order Details Presentation */}

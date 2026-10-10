@@ -12,6 +12,7 @@ export default function OrderLookupForm({
   loading,
   fieldErrors = {},
   lookupError,
+  receiverPhoneRef,
 }) {
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-6">
@@ -64,6 +65,7 @@ export default function OrderLookupForm({
             Số điện thoại <span className="text-[#b91c1c]" aria-hidden="true">*</span>
           </label>
           <input
+            ref={receiverPhoneRef}
             id="receiverPhone"
             name="receiverPhone"
             type="tel"
