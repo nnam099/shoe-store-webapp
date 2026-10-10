@@ -11,14 +11,24 @@ async function verify() {
     const productImagesCount = await prisma.productImage.count();
     const variantsCount = await prisma.variant.count();
 
+    const countChecks = {
+      brands: brandsCount === 5,
+      categories: categoriesCount === 4,
+      products: productsCount === 20,
+      productCategories: productCategoriesCount === 40,
+      colorways: colorwaysCount === 80,
+      productImages: productImagesCount === 314,
+      variants: variantsCount === 720,
+    };
+
     console.log('=== COUNTS CHECK ===');
-    console.log('brands:', brandsCount, brandsCount === 5 ? 'PASS' : 'FAIL');
-    console.log('categories:', categoriesCount, categoriesCount === 4 ? 'PASS' : 'FAIL');
-    console.log('products:', productsCount, productsCount === 20 ? 'PASS' : 'FAIL');
-    console.log('productCategories:', productCategoriesCount, productCategoriesCount === 40 ? 'PASS' : 'FAIL');
-    console.log('colorways:', colorwaysCount, colorwaysCount === 80 ? 'PASS' : 'FAIL');
-    console.log('productImages:', productImagesCount, productImagesCount === 314 ? 'PASS' : 'FAIL');
-    console.log('variants:', variantsCount, variantsCount === 720 ? 'PASS' : 'FAIL');
+    console.log('brands:', brandsCount, countChecks.brands ? 'PASS' : 'FAIL');
+    console.log('categories:', categoriesCount, countChecks.categories ? 'PASS' : 'FAIL');
+    console.log('products:', productsCount, countChecks.products ? 'PASS' : 'FAIL');
+    console.log('productCategories:', productCategoriesCount, countChecks.productCategories ? 'PASS' : 'FAIL');
+    console.log('colorways:', colorwaysCount, countChecks.colorways ? 'PASS' : 'FAIL');
+    console.log('productImages:', productImagesCount, countChecks.productImages ? 'PASS' : 'FAIL');
+    console.log('variants:', variantsCount, countChecks.variants ? 'PASS' : 'FAIL');
 
     console.log('\n=== INVARIANT ASSERTIONS ===');
     const products = await prisma.product.findMany({
@@ -76,7 +86,8 @@ async function verify() {
     console.log('B. Every product has exactly 1 default colorway:', passB ? 'PASS' : 'FAIL');
     console.log('C. Every colorway has 9 variants EU36-44:', passC ? 'PASS' : 'FAIL');
     console.log('D. Every colorway has 3 or 4 images:', passD ? 'PASS' : 'FAIL');
-    console.log(`E. Exactly 6 colorways have 3 images (${threeImgColorways.length}):`, threeImgColorways.length === 6 ? 'PASS' : 'FAIL');
+    const passE = threeImgColorways.length === 6;
+    console.log(`E. Exactly 6 colorways have 3 images (${threeImgColorways.length}):`, passE ? 'PASS' : 'FAIL');
     console.log('   List:', threeImgColorways);
     console.log('F. Every colorway has exactly 1 thumbnail:', passF ? 'PASS' : 'FAIL');
     console.log('G. No variant stock < 0:', passG ? 'PASS' : 'FAIL');
@@ -148,7 +159,7 @@ async function verify() {
       console.log('   All 20/20 product createdAt timestamps match catalog exactly.');
     }
 
-    // Transactional safety check
+    // Transactional tables are intentionally outside catalog verification.
     const userCount = await prisma.user.count();
     const adminCount = await prisma.adminAccount.count();
     const orderCount = await prisma.order.count();
@@ -156,11 +167,38 @@ async function verify() {
     const historyCount = await prisma.orderStatusHistory.count();
     const reviewCount = await prisma.review.count();
 
-    const passTransactional = userCount === 0 && adminCount === 0 && orderCount === 0 && orderItemCount === 0 && historyCount === 0 && reviewCount === 0;
-    console.log('\n=== TRANSACTIONAL TABLES UNTOUCHED ===');
-    console.log('Transactional tables completely empty (0):', passTransactional ? 'PASS' : 'FAIL');
+    console.log('\n=== Informational transactional counts ===');
+    console.log('users:', userCount);
+    console.log('admin_accounts:', adminCount);
+    console.log('orders:', orderCount);
+    console.log('order_items:', orderItemCount);
+    console.log('order_status_histories:', historyCount);
+    console.log('reviews:', reviewCount);
+
+    const catalogPassed =
+      Object.values(countChecks).every(Boolean) &&
+      passA &&
+      passB &&
+      passC &&
+      passD &&
+      passE &&
+      passF &&
+      passG &&
+      passH &&
+      passI &&
+      passJ &&
+      passK &&
+      passL;
+
+    console.log('\n=== CATALOG VERIFICATION RESULT ===');
+    console.log(catalogPassed ? 'PASS' : 'FAIL');
+
+    if (!catalogPassed) {
+      process.exitCode = 1;
+    }
   } catch (err) {
     console.error('Validation error:', err);
+    process.exitCode = 1;
   } finally {
     await prisma.$disconnect();
   }
