@@ -150,21 +150,35 @@ export default function OrderSuccessPage() {
         </div>
 
         {/* Guest Order Search Notice */}
-        <div className="p-3.5 bg-[#fefce8] border border-[#fef08a] rounded-xs text-[11px] text-[#854d0e] leading-relaxed flex items-start gap-2.5">
-          <svg className="w-4 h-4 shrink-0 text-[#ca8a04] mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <p>
-            <strong>Lưu ý:</strong> Vui lòng lưu lại <strong>Mã đơn hàng</strong> và <strong>Số điện thoại</strong> đã dùng khi đặt hàng để tra cứu thông tin đơn hàng sau này.
-          </p>
+        <div className="p-3.5 bg-[#fefce8] border border-[#fef08a] rounded-xs text-[11px] text-[#854d0e] leading-relaxed flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-2.5">
+            <svg className="w-4 h-4 shrink-0 text-[#ca8a04] mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p>
+              <strong>Lưu ý:</strong> Vui lòng lưu lại <strong>Mã đơn hàng</strong> và <strong>Số điện thoại</strong> đã dùng khi đặt hàng để tra cứu thông tin đơn hàng sau này.
+            </p>
+          </div>
+          <Link
+            to="/order-lookup"
+            className="inline-flex items-center gap-1 font-bold uppercase tracking-wider text-[#92400e] hover:text-[#78350f] underline shrink-0"
+          >
+            Tra cứu ngay &rarr;
+          </Link>
         </div>
       </div>
 
       {/* Navigation Actions */}
       <div className="flex flex-col sm:flex-row gap-3 justify-center">
         <Link
-          to="/products"
+          to="/order-lookup"
           className="min-h-[44px] px-6 py-2.5 bg-[#121212] hover:bg-[#262626] text-white text-xs font-bold uppercase tracking-wider rounded-xs transition-colors flex items-center justify-center"
+        >
+          Tra cứu đơn hàng
+        </Link>
+        <Link
+          to="/products"
+          className="min-h-[44px] px-6 py-2.5 border border-[#e5e5e0] hover:bg-[#f5f5f3] text-[#121212] text-xs font-bold uppercase tracking-wider rounded-xs transition-colors flex items-center justify-center"
         >
           Tiếp tục mua sắm
         </Link>

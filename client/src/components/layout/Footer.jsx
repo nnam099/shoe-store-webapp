@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { siteConfig } from '../../config/site';
 
 export default function Footer() {
@@ -45,6 +46,14 @@ export default function Footer() {
                   </a>
                 </li>
               ))}
+              <li>
+                <Link
+                  to="/order-lookup"
+                  className="text-neutral-400 hover:text-white transition-colors py-2 inline-flex items-center min-h-[36px] focus-visible:outline-2 focus-visible:outline-[#991b1b] rounded-sm"
+                >
+                  Tra cứu đơn hàng
+                </Link>
+              </li>
             </ul>
           </div>
 

@@ -8,6 +8,7 @@ import ProductDetailPage from './pages/ProductDetailPage';
 import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
 import OrderSuccessPage from './pages/OrderSuccessPage';
+import OrderLookupPage from './pages/OrderLookupPage';
 
 /**
  * ScrollToTop Component
@@ -47,6 +48,7 @@ function App() {
             <Route path="/cart" element={<CartPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/order-success/:orderCode" element={<OrderSuccessPage />} />
+            <Route path="/order-lookup" element={<OrderLookupPage />} />
           </Routes>
         </main>
 
