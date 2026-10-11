@@ -9,6 +9,13 @@ import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
 import OrderSuccessPage from './pages/OrderSuccessPage';
 import OrderLookupPage from './pages/OrderLookupPage';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import AccountPage from './pages/AccountPage';
+import ChangePasswordPage from './pages/ChangePasswordPage';
+import RequireMember from './components/auth/RequireMember';
+import { AuthProvider } from './context/AuthContext';
 
 /**
  * ScrollToTop Component
@@ -34,27 +41,48 @@ function ScrollToTop() {
 function App() {
   return (
     <BrowserRouter basename={import.meta.env.BASE_URL}>
-      <ScrollToTop />
-      <div className="min-h-screen flex flex-col bg-[#f8f8f6] text-[#121212] overflow-x-hidden">
-        {/* Top Header */}
-        <Header />
+      <AuthProvider>
+        <ScrollToTop />
+        <div className="min-h-screen flex flex-col bg-[#f8f8f6] text-[#121212] overflow-x-hidden">
+          {/* Top Header */}
+          <Header />
 
-        {/* Routed Content Area */}
-        <main className="flex-1">
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/products" element={<ProductsPage />} />
-            <Route path="/products/:slug" element={<ProductDetailPage />} />
-            <Route path="/cart" element={<CartPage />} />
-            <Route path="/checkout" element={<CheckoutPage />} />
-            <Route path="/order-success/:orderCode" element={<OrderSuccessPage />} />
-            <Route path="/order-lookup" element={<OrderLookupPage />} />
-          </Routes>
-        </main>
+          {/* Routed Content Area */}
+          <main className="flex-1">
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/products" element={<ProductsPage />} />
+              <Route path="/products/:slug" element={<ProductDetailPage />} />
+              <Route path="/cart" element={<CartPage />} />
+              <Route path="/checkout" element={<CheckoutPage />} />
+              <Route path="/order-success/:orderCode" element={<OrderSuccessPage />} />
+              <Route path="/order-lookup" element={<OrderLookupPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route
+                path="/account"
+                element={(
+                  <RequireMember>
+                    <AccountPage />
+                  </RequireMember>
+                )}
+              />
+              <Route
+                path="/account/change-password"
+                element={(
+                  <RequireMember>
+                    <ChangePasswordPage />
+                  </RequireMember>
+                )}
+              />
+            </Routes>
+          </main>
 
-        {/* Storefront Footer */}
-        <Footer />
-      </div>
+          {/* Storefront Footer */}
+          <Footer />
+        </div>
+      </AuthProvider>
     </BrowserRouter>
   );
 }
