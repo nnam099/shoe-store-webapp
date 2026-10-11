@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import healthRoutes from './routes/health.routes.js';
+import authRoutes from './routes/auth.routes.js';
 import orderRoutes from './routes/order.routes.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 
@@ -11,6 +12,7 @@ app.use(express.json());
 
 // API routes
 app.use('/api', healthRoutes);
+app.use('/api', authRoutes);
 app.use('/api', orderRoutes);
 
 // Catch-all 404 handler
