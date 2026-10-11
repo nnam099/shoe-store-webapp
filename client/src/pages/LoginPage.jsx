@@ -61,7 +61,7 @@ export default function LoginPage() {
     <AuthShell
       eyebrow="Member access"
       title="Đăng nhập"
-      description="Truy cập hồ sơ Member của bạn. Giỏ hàng và các đơn Guest gần đây vẫn được lưu riêng trên thiết bị này."
+      description="Đăng nhập để quản lý hồ sơ Member và tận hưởng trải nghiệm mua sắm thuận tiện hơn."
       footer={(
         <p>
           Chưa có tài khoản?{' '}

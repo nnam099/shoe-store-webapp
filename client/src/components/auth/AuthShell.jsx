@@ -4,7 +4,7 @@ export default function AuthShell({ eyebrow, title, description, children, foote
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 lg:py-20">
       <div className="grid grid-cols-1 md:grid-cols-[minmax(220px,0.8fr)_minmax(0,1.2fr)] border border-[#deded8] bg-white shadow-xs">
-        <aside className="bg-[#121212] text-white p-7 sm:p-9 lg:p-12 flex flex-col justify-between min-h-[220px] md:min-h-[560px]">
+        <aside className="bg-[#121212] text-white p-7 sm:p-9 lg:p-12 flex flex-col min-h-[230px] md:min-h-[560px]">
           <div>
             <Link
               to="/"
@@ -15,11 +15,11 @@ export default function AuthShell({ eyebrow, title, description, children, foote
             <p className="mt-8 text-[10px] font-bold uppercase tracking-[0.24em] text-neutral-400">
               {eyebrow}
             </p>
-            <h1 className="mt-3 text-3xl sm:text-4xl lg:text-5xl font-black uppercase tracking-tight leading-[0.95]">
+            <h1 className="mt-3 max-w-[10ch] text-balance text-[1.85rem] sm:text-[2.125rem] lg:text-[2.5rem] font-black uppercase tracking-[-0.025em] leading-[1.12]">
               {title}
             </h1>
           </div>
-          <p className="mt-8 max-w-sm text-xs leading-6 text-neutral-400">
+          <p className="mt-7 md:mt-auto md:pt-14 max-w-[34ch] text-xs leading-6 text-neutral-400">
             {description}
           </p>
         </aside>

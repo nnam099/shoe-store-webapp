@@ -75,7 +75,7 @@ export default function RegisterPage() {
     <AuthShell
       eyebrow="New member"
       title="Tạo tài khoản"
-      description="Tạo hồ sơ Member để quản lý thông tin cá nhân. Checkout Member và lịch sử đơn hàng sẽ được bổ sung ở giai đoạn tiếp theo."
+      description="Tạo tài khoản Member để lưu thông tin cá nhân và mua sắm thuận tiện hơn."
       footer={(
         <p>
           Đã có tài khoản?{' '}

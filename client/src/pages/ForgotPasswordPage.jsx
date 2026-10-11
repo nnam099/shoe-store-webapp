@@ -69,7 +69,7 @@ export default function ForgotPasswordPage() {
     <AuthShell
       eyebrow={`Password reset · ${step}/2`}
       title="Quên mật khẩu"
-      description="Đặt lại mật khẩu bằng email tài khoản. Sau khi cập nhật, bạn cần đăng nhập lại bằng mật khẩu mới."
+      description="Cập nhật lại mật khẩu để tiếp tục truy cập tài khoản Member của bạn."
       footer={(
         <Link className="font-bold text-[#121212] underline underline-offset-4" to="/login">
           Quay lại đăng nhập

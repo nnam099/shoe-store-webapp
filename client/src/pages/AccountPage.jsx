@@ -77,12 +77,18 @@ export default function AccountPage() {
             >
               Đổi mật khẩu
             </Link>
+            <Link
+              to="/products"
+              className="mt-5 flex min-h-[44px] w-full items-center justify-center border border-white bg-white px-4 py-3 text-center text-xs font-extrabold uppercase tracking-widest text-[#121212] transition-colors hover:border-[#dc2626] hover:bg-[#dc2626] hover:text-white focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-4"
+            >
+              Khám phá sản phẩm
+            </Link>
           </div>
         </aside>
 
         <section className="border border-[#deded8] bg-white p-6 sm:p-8 lg:p-10">
           <h2 className="text-xl font-black uppercase tracking-tight">Thông tin cá nhân</h2>
-          <p className="mt-2 text-xs leading-5 text-[#737373]">Email không thể thay đổi trong giai đoạn này.</p>
+          <p className="mt-2 text-xs leading-5 text-[#737373]">Email được dùng để đăng nhập và không thể thay đổi.</p>
 
           <form className="mt-7 grid grid-cols-1 sm:grid-cols-2 gap-5" onSubmit={handleSubmit} noValidate>
             <AuthField

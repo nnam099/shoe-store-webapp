@@ -56,7 +56,7 @@ export default function ChangePasswordPage() {
     <AuthShell
       eyebrow="Account security"
       title="Đổi mật khẩu"
-      description="Sau khi đổi mật khẩu, mọi phiên Member đã cấp trước đó sẽ không còn hợp lệ và bạn cần đăng nhập lại."
+      description="Sau khi đổi mật khẩu, bạn sẽ cần đăng nhập lại bằng mật khẩu mới."
       footer={(
         <Link className="font-bold text-[#121212] underline underline-offset-4" to="/account">
           Quay lại tài khoản
