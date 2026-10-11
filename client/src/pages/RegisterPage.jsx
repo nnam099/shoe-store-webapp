@@ -86,7 +86,7 @@ export default function RegisterPage() {
       )}
     >
       <div className="max-w-lg">
-        <h2 className="text-xl font-black uppercase tracking-tight">Thông tin Member</h2>
+        <h2 className="text-xl font-black uppercase tracking-tight">Thông tin tài khoản</h2>
         <p className="mt-2 text-xs leading-5 text-[#737373]">Các trường có dấu * là bắt buộc.</p>
 
         <form className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-5" onSubmit={handleSubmit} noValidate>

@@ -54,8 +54,8 @@ export default function ChangePasswordPage() {
 
   return (
     <AuthShell
+      variant="compact"
       eyebrow="Account security"
-      title="Đổi mật khẩu"
       description="Sau khi đổi mật khẩu, bạn sẽ cần đăng nhập lại bằng mật khẩu mới."
       footer={(
         <Link className="font-bold text-[#121212] underline underline-offset-4" to="/account">
@@ -64,7 +64,7 @@ export default function ChangePasswordPage() {
       )}
     >
       <div className="max-w-md">
-        <h2 className="text-xl font-black uppercase tracking-tight">Cập nhật mật khẩu</h2>
+        <h1 className="text-3xl sm:text-[2.125rem] font-black tracking-tight leading-tight">Đổi mật khẩu</h1>
         <p className="mt-2 text-xs leading-5 text-[#737373]">Mật khẩu mới cần có ít nhất 8 ký tự.</p>
 
         <form className="mt-6 space-y-5" onSubmit={handleSubmit} noValidate>

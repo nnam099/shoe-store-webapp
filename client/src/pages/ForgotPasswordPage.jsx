@@ -67,8 +67,9 @@ export default function ForgotPasswordPage() {
 
   return (
     <AuthShell
-      eyebrow={`Password reset · ${step}/2`}
-      title="Quên mật khẩu"
+      variant="compact"
+      eyebrow="Password reset"
+      railMeta={`0${step} / 02`}
       description="Cập nhật lại mật khẩu để tiếp tục truy cập tài khoản Member của bạn."
       footer={(
         <Link className="font-bold text-[#121212] underline underline-offset-4" to="/login">
@@ -77,13 +78,13 @@ export default function ForgotPasswordPage() {
       )}
     >
       <div className="max-w-md">
-        <h2 className="text-xl font-black uppercase tracking-tight">
-          {step === 1 ? 'Xác định tài khoản' : 'Đặt mật khẩu mới'}
-        </h2>
+        <h1 className="text-3xl sm:text-[2.125rem] font-black tracking-tight leading-tight">
+          {step === 1 ? 'Quên mật khẩu' : 'Đặt mật khẩu mới'}
+        </h1>
         <p className="mt-2 text-xs leading-5 text-[#737373]">
           {step === 1
-            ? 'Nhập email đã dùng khi đăng ký Member.'
-            : `Đang đặt lại mật khẩu cho ${form.email.trim()}.`}
+            ? 'Nhập email đã dùng khi đăng ký tài khoản.'
+            : `Email đã chọn: ${form.email.trim()}`}
         </p>
 
         {step === 1 ? (
