@@ -54,9 +54,10 @@ export default function ChangePasswordPage() {
 
   return (
     <AuthShell
-      variant="compact"
       eyebrow="Account security"
-      description="Sau khi đổi mật khẩu, bạn sẽ cần đăng nhập lại bằng mật khẩu mới."
+      title="Đổi mật khẩu"
+      description="Bảo vệ tài khoản bằng cách cập nhật mật khẩu khi cần thiết."
+      crop="security"
       footer={(
         <Link className="font-bold text-[#121212] underline underline-offset-4" to="/account">
           Quay lại tài khoản

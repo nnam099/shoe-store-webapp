@@ -66,14 +66,14 @@ export default function LoginPage() {
         <p>
           Chưa có tài khoản?{' '}
           <Link className="font-bold text-[#121212] underline underline-offset-4" to="/register">
-            Đăng ký Member
+            Đăng ký
           </Link>
         </p>
       )}
     >
       <div className="max-w-md">
         <h2 className="text-xl font-black uppercase tracking-tight">Chào mừng trở lại</h2>
-        <p className="mt-2 text-xs leading-5 text-[#737373]">Nhập email và mật khẩu Member của bạn.</p>
+        <p className="mt-2 text-xs leading-5 text-[#737373]">Đăng nhập để tiếp tục mua sắm tại STEP/LAB.</p>
 
         {location.state?.message && (
           <p role="status" className="mt-5 border border-[#bbf7d0] bg-[#f0fdf4] p-3 text-xs text-[#166534]">

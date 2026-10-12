@@ -152,7 +152,7 @@ export default function RegisterPage() {
             disabled={isSubmitting}
             className="sm:col-span-2 min-h-[46px] w-full bg-[#121212] px-5 py-3 text-xs font-extrabold uppercase tracking-widest text-white transition-colors hover:bg-[#991b1b] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-[#991b1b] focus-visible:outline-offset-2"
           >
-            {isSubmitting ? 'Đang tạo tài khoản...' : 'Đăng ký Member'}
+            {isSubmitting ? 'Đang tạo tài khoản...' : 'Đăng ký'}
           </button>
         </form>
       </div>
