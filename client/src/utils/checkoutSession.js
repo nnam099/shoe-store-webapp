@@ -18,6 +18,7 @@ export const ORDER_CONFIRMATION_SESSION_KEY = 'steplab_order_confirmation_v1';
  * @param {number} confirmation.total
  * @param {string} confirmation.paymentMethod
  * @param {Array} [confirmation.items]
+ * @param {boolean} [confirmation.memberOrder]
  */
 export function saveOrderConfirmation(confirmation) {
   if (typeof window === 'undefined' || !window.sessionStorage) return;
@@ -41,6 +42,7 @@ export function saveOrderConfirmation(confirmation) {
             colorwayImage: it.colorwayImage,
           }))
         : [],
+      memberOrder: confirmation.memberOrder === true,
       timestamp: Date.now(),
     };
 

@@ -1,52 +1,8 @@
 import { formatPrice, getAssetUrl } from '../../config/site';
-
-/**
- * Maps authoritative backend status enum to customer-facing Vietnamese label.
- * Strictly avoids exposing raw backend enums to the customer.
- */
-const STATUS_PRESENTATION = {
-  PENDING: {
-    label: 'Chờ xử lý',
-    badgeClass: 'bg-[#fef3c7] text-[#92400e] border-[#fde68a]',
-  },
-  PREPARING: {
-    label: 'Đang chuẩn bị hàng',
-    badgeClass: 'bg-[#e0f2fe] text-[#075985] border-[#bae6fd]',
-  },
-  SHIPPING: {
-    label: 'Đang giao hàng',
-    badgeClass: 'bg-[#f3e8ff] text-[#6b21a8] border-[#e9d5ff]',
-  },
-  DELIVERED: {
-    label: 'Đã giao hàng',
-    badgeClass: 'bg-[#ecfdf5] text-[#065f46] border-[#a7f3d0]',
-  },
-  COMPLETED: {
-    label: 'Hoàn tất',
-    badgeClass: 'bg-[#ecfdf5] text-[#065f46] border-[#a7f3d0]',
-  },
-  CANCELLED: {
-    label: 'Đã hủy',
-    badgeClass: 'bg-[#fef2f2] text-[#991b1b] border-[#fecaca]',
-  },
-};
-
-/**
- * Deterministic date formatter: DD/MM/YYYY • HH:mm
- */
-function formatOrderDate(dateString) {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return '';
-
-  const day = String(date.getDate()).padStart(2, '0');
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const year = date.getFullYear();
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-
-  return `${day}/${month}/${year} • ${hours}:${minutes}`;
-}
+import {
+  formatOrderDateTime,
+  getOrderStatusPresentation,
+} from '../../utils/orderPresentation';
 
 /**
  * OrderDetailCard Component
@@ -60,10 +16,7 @@ export default function OrderDetailCard({
 }) {
   if (!order) return null;
 
-  const statusInfo = STATUS_PRESENTATION[order.status] || {
-    label: order.status,
-    badgeClass: 'bg-[#f5f5f3] text-[#525252] border-[#e5e5e0]',
-  };
+  const statusInfo = getOrderStatusPresentation(order.status);
 
   return (
     <div className="bg-white border border-[#e5e5e0] rounded-xs shadow-xs p-6 sm:p-7 space-y-6">
@@ -122,7 +75,7 @@ export default function OrderDetailCard({
         <div>
           <span className="text-[#737373] block mb-0.5">Ngày đặt hàng:</span>
           <span className="font-bold text-[#121212]">
-            {formatOrderDate(order.createdAt)}
+            {formatOrderDateTime(order.createdAt)}
           </span>
         </div>
 
@@ -130,7 +83,7 @@ export default function OrderDetailCard({
           <div>
             <span className="text-[#737373] block mb-0.5">Ngày hủy:</span>
             <span className="font-bold text-[#991b1b]">
-              {formatOrderDate(order.cancelledAt)}
+              {formatOrderDateTime(order.cancelledAt)}
             </span>
           </div>
         )}

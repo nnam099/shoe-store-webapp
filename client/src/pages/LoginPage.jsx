@@ -9,8 +9,25 @@ const SAFE_MEMBER_DESTINATIONS = new Set(['/account', '/account/change-password'
 
 function getSafeDestination(value) {
   if (typeof value !== 'string') return '/account';
-  const [pathname] = value.split(/[?#]/, 1);
-  return SAFE_MEMBER_DESTINATIONS.has(pathname) ? value : '/account';
+  if (!value.startsWith('/') || value.startsWith('//') || value.includes('#')) return '/account';
+
+  const destination = new URL(value, 'https://steplab.local');
+  const { pathname, searchParams } = destination;
+  if (SAFE_MEMBER_DESTINATIONS.has(pathname) && !destination.search) return pathname;
+
+  if (pathname === '/account/orders') {
+    const keys = [...searchParams.keys()];
+    const page = searchParams.get('page');
+    const hasSafeQuery = keys.length === 0
+      || (keys.length === 1 && keys[0] === 'page' && /^[1-9]\d*$/.test(page || ''));
+    return hasSafeQuery ? `${pathname}${destination.search}` : '/account';
+  }
+
+  if (/^\/account\/orders\/[A-Za-z0-9-]{1,50}$/.test(pathname) && !destination.search) {
+    return pathname;
+  }
+
+  return '/account';
 }
 
 export default function LoginPage() {

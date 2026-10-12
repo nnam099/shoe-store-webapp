@@ -72,8 +72,14 @@ export default function AccountPage() {
           <p className="mt-1 break-all text-xs text-neutral-400">{member.email}</p>
           <div className="mt-7 border-t border-neutral-700 pt-6">
             <Link
+              to="/account/orders"
+              className="flex min-h-[44px] items-center text-xs font-extrabold uppercase tracking-widest underline underline-offset-4 hover:text-red-300 focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-4"
+            >
+              Đơn hàng của tôi
+            </Link>
+            <Link
               to="/account/change-password"
-              className="inline-flex min-h-[44px] items-center text-xs font-extrabold uppercase tracking-widest underline underline-offset-4 hover:text-red-300 focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-4"
+              className="mt-2 flex min-h-[44px] items-center text-xs font-extrabold uppercase tracking-widest underline underline-offset-4 hover:text-red-300 focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-4"
             >
               Đổi mật khẩu
             </Link>

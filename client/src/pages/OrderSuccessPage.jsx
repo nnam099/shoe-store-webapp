@@ -10,6 +10,7 @@ export default function OrderSuccessPage() {
 
   // Validate session confirmation against the current URL route param
   const isValidSession = confirmation && confirmation.orderCode === orderCode;
+  const isMemberOrder = isValidSession && confirmation.memberOrder === true;
 
   const handleCopyCode = async () => {
     if (!orderCode) return;
@@ -149,32 +150,43 @@ export default function OrderSuccessPage() {
           </div>
         </div>
 
-        {/* Guest Order Search Notice */}
-        <div className="p-3.5 bg-[#fefce8] border border-[#fef08a] rounded-xs text-[11px] text-[#854d0e] leading-relaxed flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-start gap-2.5">
-            <svg className="w-4 h-4 shrink-0 text-[#ca8a04] mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <p>
-              <strong>Lưu ý:</strong> Vui lòng lưu lại <strong>Mã đơn hàng</strong> và <strong>Số điện thoại</strong> đã dùng khi đặt hàng để tra cứu thông tin đơn hàng sau này.
-            </p>
+        {isMemberOrder ? (
+          <div className="flex flex-col justify-between gap-3 border border-[#d4d4ce] bg-[#f8f8f6] p-3.5 text-[11px] leading-relaxed text-[#525252] sm:flex-row sm:items-center">
+            <p>Đơn hàng đã được lưu vào lịch sử mua sắm trong tài khoản Member của bạn.</p>
+            <Link
+              to={`/account/orders/${encodeURIComponent(orderCode)}`}
+              className="inline-flex shrink-0 font-bold uppercase tracking-wider text-[#121212] underline underline-offset-4 hover:text-[#991b1b]"
+            >
+              Xem đơn hàng &rarr;
+            </Link>
           </div>
-          <Link
-            to="/order-lookup"
-            className="inline-flex items-center gap-1 font-bold uppercase tracking-wider text-[#92400e] hover:text-[#78350f] underline shrink-0"
-          >
-            Tra cứu ngay &rarr;
-          </Link>
-        </div>
+        ) : (
+          <div className="p-3.5 bg-[#fefce8] border border-[#fef08a] rounded-xs text-[11px] text-[#854d0e] leading-relaxed flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start gap-2.5">
+              <svg className="w-4 h-4 shrink-0 text-[#ca8a04] mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p>
+                <strong>Lưu ý:</strong> Vui lòng lưu lại <strong>Mã đơn hàng</strong> và <strong>Số điện thoại</strong> đã dùng khi đặt hàng để tra cứu thông tin đơn hàng sau này.
+              </p>
+            </div>
+            <Link
+              to="/order-lookup"
+              className="inline-flex items-center gap-1 font-bold uppercase tracking-wider text-[#92400e] hover:text-[#78350f] underline shrink-0"
+            >
+              Tra cứu ngay &rarr;
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Navigation Actions */}
       <div className="flex flex-col sm:flex-row gap-3 justify-center">
         <Link
-          to="/order-lookup"
+          to={isMemberOrder ? `/account/orders/${encodeURIComponent(orderCode)}` : '/order-lookup'}
           className="min-h-[44px] px-6 py-2.5 bg-[#121212] hover:bg-[#262626] text-white text-xs font-bold uppercase tracking-wider rounded-xs transition-colors flex items-center justify-center"
         >
-          Tra cứu đơn hàng
+          {isMemberOrder ? 'Xem đơn hàng' : 'Tra cứu đơn hàng'}
         </Link>
         <Link
           to="/products"

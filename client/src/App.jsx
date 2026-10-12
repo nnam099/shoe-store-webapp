@@ -14,6 +14,8 @@ import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import AccountPage from './pages/AccountPage';
 import ChangePasswordPage from './pages/ChangePasswordPage';
+import MemberOrdersPage from './pages/MemberOrdersPage';
+import MemberOrderDetailPage from './pages/MemberOrderDetailPage';
 import RequireMember from './components/auth/RequireMember';
 import { AuthProvider } from './context/AuthContext';
 
@@ -73,6 +75,22 @@ function App() {
                 element={(
                   <RequireMember>
                     <ChangePasswordPage />
+                  </RequireMember>
+                )}
+              />
+              <Route
+                path="/account/orders"
+                element={(
+                  <RequireMember>
+                    <MemberOrdersPage />
+                  </RequireMember>
+                )}
+              />
+              <Route
+                path="/account/orders/:orderCode"
+                element={(
+                  <RequireMember>
+                    <MemberOrderDetailPage />
                   </RequireMember>
                 )}
               />

@@ -237,7 +237,10 @@ export default function CheckoutPage() {
       }
 
       // Save confirmation snapshot, clear cart, and navigate to success route
-      saveOrderConfirmation(orderResult);
+      saveOrderConfirmation({
+        ...orderResult,
+        memberOrder: Boolean(checkoutToken),
+      });
       clearCart();
       navigate(`/order-success/${orderResult.orderCode}`, { replace: true });
     } catch (err) {
