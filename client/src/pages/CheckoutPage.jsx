@@ -1,14 +1,16 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getCart, clearCart } from '../utils/cartStorage';
-import { getCheckoutQuote, createGuestOrder } from '../services/checkoutService';
+import { getCheckoutQuote, createOrder } from '../services/checkoutService';
 import { saveOrderConfirmation } from '../utils/checkoutSession';
 import { addRecentOrder } from '../utils/recentOrders';
 import CheckoutForm from '../components/checkout/CheckoutForm';
 import CheckoutSummary from '../components/checkout/CheckoutSummary';
+import { useAuth } from '../context/authContextValue';
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
+  const { member, token, clearSession } = useAuth();
 
   // Quote state
   const [quote, setQuote] = useState(null);
@@ -32,6 +34,18 @@ export default function CheckoutPage() {
   const nameRef = useRef(null);
   const phoneRef = useRef(null);
   const addressRef = useRef(null);
+
+  useEffect(() => {
+    if (!member) return;
+
+    // oxlint-disable-next-line react/set-state-in-effect -- Member profile arrives asynchronously; preserve any fields already typed.
+    setFormData((current) => ({
+      ...current,
+      receiverName: current.receiverName.trim() ? current.receiverName : (member.fullName || ''),
+      receiverPhone: current.receiverPhone.trim() ? current.receiverPhone : (member.phone || ''),
+      receiverAddress: current.receiverAddress.trim() ? current.receiverAddress : (member.address || ''),
+    }));
+  }, [member]);
 
   /**
    * Fetches the server-authoritative checkout quote for the current cart (e.g. for retry/recovery).
@@ -204,9 +218,10 @@ export default function CheckoutPage() {
       })),
       expectedShippingFee: quote.shippingFee,
     };
+    const checkoutToken = token;
 
     try {
-      const orderResult = await createGuestOrder(orderPayload);
+      const orderResult = await createOrder(orderPayload, { token: checkoutToken });
 
       if (
         !orderResult ||
@@ -216,8 +231,10 @@ export default function CheckoutPage() {
         throw new Error('Invalid successful order response');
       }
 
-      // Local shortcut time only; authoritative Order.createdAt comes from lookup.
-      addRecentOrder(orderResult.orderCode, new Date().toISOString());
+      if (!checkoutToken) {
+        // Guest-only shortcut; Member order history is authoritative and server-backed.
+        addRecentOrder(orderResult.orderCode, new Date().toISOString());
+      }
 
       // Save confirmation snapshot, clear cart, and navigate to success route
       saveOrderConfirmation(orderResult);
@@ -226,7 +243,12 @@ export default function CheckoutPage() {
     } catch (err) {
       setSubmitting(false);
 
-      if (err.status === 409 && err.code === 'CHECKOUT_CHANGED') {
+      if (checkoutToken && err.status === 401 && err.code === 'UNAUTHORIZED') {
+        clearSession();
+        setSubmitError(
+          'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại trước khi đặt hàng.'
+        );
+      } else if (err.status === 409 && err.code === 'CHECKOUT_CHANGED') {
         // Price or shipping fee changed; update with fresh quote if provided
         if (err.details?.quote) {
           setQuote(err.details.quote);
@@ -346,6 +368,7 @@ export default function CheckoutPage() {
           submitting={submitting}
           disabled={loadingQuote || !!quoteError}
           submitError={submitError}
+          memberEmail={member?.email || ''}
           summary={<CheckoutSummary quote={quote} loading={loadingQuote} />}
         />
       )}

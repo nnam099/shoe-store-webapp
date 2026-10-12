@@ -269,10 +269,19 @@ export async function computeCheckoutQuote(rawItems) {
 }
 
 /**
- * Creates a Guest Order atomically in PostgreSQL.
+ * Creates a Guest or authenticated Member Order atomically in PostgreSQL.
+ * Member ownership is supplied only by trusted middleware context.
  */
-export async function createGuestOrder(orderInput, options = {}) {
-  const { codeGenerator = generateOrderCode } = options;
+export async function createOrder(orderInput, options = {}) {
+  const { codeGenerator = generateOrderCode, memberId = null } = options;
+
+  if (Object.prototype.hasOwnProperty.call(orderInput, 'userId')) {
+    throw new AppError('userId is not accepted in the order payload', 400, 'VALIDATION_ERROR');
+  }
+
+  if (memberId !== null && (!Number.isInteger(memberId) || memberId < 1)) {
+    throw new AppError('Invalid authenticated member context', 401, 'UNAUTHORIZED');
+  }
   const {
     receiverName,
     receiverPhone,
@@ -428,7 +437,7 @@ export async function createGuestOrder(orderInput, options = {}) {
         const createdOrder = await tx.order.create({
           data: {
             orderCode,
-            userId: null, // GUEST ORDER: ALWAYS NULL
+            userId: memberId,
             status: 'PENDING',
             paymentMethod: 'COD',
             receiverName: trimmedReceiverName,
@@ -502,6 +511,13 @@ export async function createGuestOrder(orderInput, options = {}) {
 }
 
 /**
+ * Backward-compatible Guest-only entry point used by existing server tests.
+ */
+export async function createGuestOrder(orderInput, options = {}) {
+  return createOrder(orderInput, { ...options, memberId: null });
+}
+
+/**
  * Strips formatting characters (spaces, -, (, ), .) for phone comparison.
  * Preserves actual characters (such as leading +, digits) without country-code transformation.
  */
@@ -519,15 +535,72 @@ export function isPhoneMatch(storedPhone, inputPhone) {
   return stripPhoneFormatting(storedPhone) === stripPhoneFormatting(inputPhone);
 }
 
+const ORDER_NOT_FOUND_MESSAGE = 'Không tìm thấy đơn hàng với thông tin đã cung cấp.';
+const ORDER_NOT_CANCELLABLE_MESSAGE = 'Đơn hàng không thể hủy ở trạng thái hiện tại.';
+const ORDER_NOT_CONFIRMABLE_MESSAGE = 'Đơn hàng chưa thể xác nhận đã nhận ở trạng thái hiện tại.';
+
+function normalizeOrderCode(orderCode) {
+  if (typeof orderCode !== 'string' || !orderCode.trim()) {
+    throw new AppError('orderCode is required', 400, 'VALIDATION_ERROR');
+  }
+
+  const normalized = orderCode.trim().toUpperCase();
+  if (normalized.length > 50) {
+    throw new AppError('orderCode exceeds maximum length', 400, 'VALIDATION_ERROR');
+  }
+  return normalized;
+}
+
+function validateReceiverPhone(receiverPhone) {
+  if (typeof receiverPhone !== 'string' || !receiverPhone.trim()) {
+    throw new AppError('receiverPhone is required', 400, 'VALIDATION_ERROR');
+  }
+
+  const trimmed = receiverPhone.trim();
+  if (!isValidPhone(trimmed)) {
+    throw new AppError('receiverPhone is invalid', 400, 'VALIDATION_ERROR');
+  }
+  return trimmed;
+}
+
+function isCancellable(order) {
+  return (
+    (order.status === 'PENDING' || order.status === 'PREPARING') &&
+    order.stockRestoredAt === null
+  );
+}
+
+function isConfirmable(order) {
+  return order.status === 'DELIVERED';
+}
+
+export function serializeOrderTimeline(statusHistories = []) {
+  return statusHistories.map((history) => ({
+    status: history.status,
+    changedAt: history.changedAt,
+  }));
+}
+
+function serializeOrderItems(orderItems = []) {
+  return orderItems.map((item) => {
+    const unitPrice = Math.round(Number(item.unitPrice));
+    return {
+      productName: item.productName,
+      colorwayName: item.colorwayName,
+      size: item.size,
+      unitPrice,
+      quantity: item.quantity,
+      lineTotal: unitPrice * item.quantity,
+      thumbnail: item.colorwayImage || null,
+    };
+  });
+}
+
 /**
  * Serializes an Order into a privacy-preserving, Guest-safe public representation.
  * Explicitly omits: receiverName, receiverAddress, receiverPhone, receiverPhoneMasked, note, userId, internal IDs.
  */
 export function serializePublicOrder(order) {
-  const isCancellable =
-    (order.status === 'PENDING' || order.status === 'PREPARING') &&
-    order.stockRestoredAt === null;
-
   return {
     orderCode: order.orderCode,
     status: order.status,
@@ -537,113 +610,139 @@ export function serializePublicOrder(order) {
     shippingFee: Math.round(Number(order.shippingFee)),
     total: Math.round(Number(order.total)),
     paymentMethod: order.paymentMethod,
-    cancellable: isCancellable,
-    items: (order.orderItems || []).map((item) => {
-      const unitPrice = Math.round(Number(item.unitPrice));
-      const quantity = item.quantity;
-      const lineTotal = unitPrice * quantity;
-      return {
-        productName: item.productName,
-        colorwayName: item.colorwayName,
-        size: item.size,
-        unitPrice,
-        quantity,
-        lineTotal,
-        thumbnail: item.colorwayImage || null,
-      };
-    }),
+    cancellable: isCancellable(order),
+    confirmable: isConfirmable(order),
+    items: serializeOrderItems(order.orderItems),
+    timeline: serializeOrderTimeline(order.statusHistories),
   };
 }
+
+function serializeMemberOrderListItem(order) {
+  return {
+    orderCode: order.orderCode,
+    status: order.status,
+    createdAt: order.createdAt,
+    subtotal: Math.round(Number(order.subtotal)),
+    shippingFee: Math.round(Number(order.shippingFee)),
+    total: Math.round(Number(order.total)),
+    paymentMethod: order.paymentMethod,
+    itemCount: order.orderItems.reduce((sum, item) => sum + item.quantity, 0),
+    itemPreview: serializeOrderItems(order.orderItems.slice(0, 2)),
+    cancellable: isCancellable(order),
+    confirmable: isConfirmable(order),
+  };
+}
+
+function serializeMemberOrderDetail(order) {
+  return {
+    orderCode: order.orderCode,
+    status: order.status,
+    createdAt: order.createdAt,
+    deliveredAt: order.deliveredAt,
+    completedAt: order.completedAt,
+    cancelledAt: order.cancelledAt,
+    subtotal: Math.round(Number(order.subtotal)),
+    shippingFee: Math.round(Number(order.shippingFee)),
+    total: Math.round(Number(order.total)),
+    paymentMethod: order.paymentMethod,
+    cancellable: isCancellable(order),
+    confirmable: isConfirmable(order),
+    items: serializeOrderItems(order.orderItems),
+    timeline: serializeOrderTimeline(order.statusHistories),
+  };
+}
+
+const ORDER_DETAIL_INCLUDE = {
+  orderItems: true,
+  statusHistories: {
+    orderBy: [{ changedAt: 'asc' }, { id: 'asc' }],
+  },
+};
 
 /**
  * Looks up a guest order by orderCode and receiverPhone.
  * Enforces privacy protection (anti-enumeration) by returning neutral 404 for wrong code or mismatched phone.
  */
 export async function lookupGuestOrder({ orderCode, receiverPhone }) {
-  if (typeof orderCode !== 'string' || !orderCode.trim()) {
-    throw new AppError('orderCode is required', 400, 'VALIDATION_ERROR');
-  }
-  const trimmedCode = orderCode.trim();
-  if (trimmedCode.length > 50) {
-    throw new AppError('orderCode exceeds maximum length', 400, 'VALIDATION_ERROR');
-  }
-
-  if (typeof receiverPhone !== 'string' || !receiverPhone.trim()) {
-    throw new AppError('receiverPhone is required', 400, 'VALIDATION_ERROR');
-  }
-  const trimmedPhone = receiverPhone.trim();
-  if (!isValidPhone(trimmedPhone)) {
-    throw new AppError('receiverPhone is invalid', 400, 'VALIDATION_ERROR');
-  }
-
-  const normalizedOrderCode = trimmedCode.toUpperCase();
+  const normalizedOrderCode = normalizeOrderCode(orderCode);
+  const trimmedPhone = validateReceiverPhone(receiverPhone);
 
   const order = await prisma.order.findUnique({
     where: { orderCode: normalizedOrderCode },
-    include: {
-      orderItems: true,
-    },
+    include: ORDER_DETAIL_INCLUDE,
   });
 
   if (!order || !isPhoneMatch(order.receiverPhone, trimmedPhone)) {
-    throw new AppError('Không tìm thấy đơn hàng với thông tin đã cung cấp.', 404, 'ORDER_NOT_FOUND');
+    throw new AppError(ORDER_NOT_FOUND_MESSAGE, 404, 'ORDER_NOT_FOUND');
   }
 
   return serializePublicOrder(order);
 }
 
-/**
- * Cancels a guest order atomically.
- * Validates possession, checks eligibility (PENDING or PREPARING and stockRestoredAt === null),
- * updates status to CANCELLED, restores Variant stock by OrderItem quantity,
- * and logs an OrderStatusHistory record in a single transaction.
- */
-export async function cancelGuestOrder({ orderCode, receiverPhone }) {
-  if (typeof orderCode !== 'string' || !orderCode.trim()) {
-    throw new AppError('orderCode is required', 400, 'VALIDATION_ERROR');
-  }
-  const trimmedCode = orderCode.trim();
-  if (trimmedCode.length > 50) {
-    throw new AppError('orderCode exceeds maximum length', 400, 'VALIDATION_ERROR');
+function parsePositiveInteger(value, field, defaultValue, maximum = null) {
+  if (value === undefined) return defaultValue;
+  if (typeof value !== 'string' || !/^[1-9]\d*$/.test(value)) {
+    throw new AppError(`${field} must be a positive integer`, 400, 'VALIDATION_ERROR');
   }
 
-  if (typeof receiverPhone !== 'string' || !receiverPhone.trim()) {
-    throw new AppError('receiverPhone is required', 400, 'VALIDATION_ERROR');
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || (maximum !== null && parsed > maximum)) {
+    throw new AppError(
+      maximum === null ? `${field} is too large` : `${field} must not exceed ${maximum}`,
+      400,
+      'VALIDATION_ERROR'
+    );
   }
-  const trimmedPhone = receiverPhone.trim();
-  if (!isValidPhone(trimmedPhone)) {
-    throw new AppError('receiverPhone is invalid', 400, 'VALIDATION_ERROR');
-  }
+  return parsed;
+}
 
-  const normalizedOrderCode = trimmedCode.toUpperCase();
+export async function listOrdersForMember(memberId, query = {}) {
+  const page = parsePositiveInteger(query.page, 'page', 1);
+  const limit = parsePositiveInteger(query.limit, 'limit', 10, 50);
+  const where = { userId: memberId };
 
-  const order = await prisma.order.findUnique({
-    where: { orderCode: normalizedOrderCode },
-    include: {
-      orderItems: true,
+  const [totalItems, orders] = await prisma.$transaction([
+    prisma.order.count({ where }),
+    prisma.order.findMany({
+      where,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      skip: (page - 1) * limit,
+      take: limit,
+      include: { orderItems: true },
+    }),
+  ]);
+
+  return {
+    orders: orders.map(serializeMemberOrderListItem),
+    pagination: {
+      page,
+      limit,
+      totalItems,
+      totalPages: Math.ceil(totalItems / limit),
     },
+  };
+}
+
+export async function getOrderForMember({ memberId, orderCode }) {
+  const normalizedOrderCode = normalizeOrderCode(orderCode);
+  const order = await prisma.order.findFirst({
+    where: { orderCode: normalizedOrderCode, userId: memberId },
+    include: ORDER_DETAIL_INCLUDE,
   });
 
-  if (!order || !isPhoneMatch(order.receiverPhone, trimmedPhone)) {
-    throw new AppError('Không tìm thấy đơn hàng với thông tin đã cung cấp.', 404, 'ORDER_NOT_FOUND');
+  if (!order) {
+    throw new AppError(ORDER_NOT_FOUND_MESSAGE, 404, 'ORDER_NOT_FOUND');
   }
+  return serializeMemberOrderDetail(order);
+}
 
-  // Pre-transaction check for clear failure if order is already non-cancellable
-  const isCancellable =
-    (order.status === 'PENDING' || order.status === 'PREPARING') &&
-    order.stockRestoredAt === null;
-
-  if (!isCancellable) {
-    throw new AppError('Đơn hàng không thể hủy ở trạng thái hiện tại.', 409, 'ORDER_NOT_CANCELLABLE');
-  }
-
+async function cancelAuthorizedOrder(orderId) {
   const now = new Date();
 
-  return await prisma.$transaction(async (tx) => {
-    // Conditional transition (compare-and-set)
+  return prisma.$transaction(async (tx) => {
     const updateResult = await tx.order.updateMany({
       where: {
-        id: order.id,
+        id: orderId,
         status: { in: ['PENDING', 'PREPARING'] },
         stockRestoredAt: null,
       },
@@ -654,34 +753,123 @@ export async function cancelGuestOrder({ orderCode, receiverPhone }) {
       },
     });
 
-    if (updateResult.count === 0) {
-      throw new AppError('Đơn hàng không thể hủy ở trạng thái hiện tại.', 409, 'ORDER_NOT_CANCELLABLE');
+    if (updateResult.count !== 1) {
+      throw new AppError(ORDER_NOT_CANCELLABLE_MESSAGE, 409, 'ORDER_NOT_CANCELLABLE');
     }
 
-    // Restore stock based ONLY on OrderItem.variantId and OrderItem.quantity
-    for (const item of order.orderItems) {
+    const orderItems = await tx.orderItem.findMany({ where: { orderId } });
+    for (const item of orderItems) {
       await tx.variant.update({
         where: { id: item.variantId },
-        data: {
-          stock: { increment: item.quantity },
-        },
+        data: { stock: { increment: item.quantity } },
       });
     }
 
-    // Create exactly one OrderStatusHistory record
     await tx.orderStatusHistory.create({
-      data: {
-        orderId: order.id,
-        status: 'CANCELLED',
-        changedAt: now,
+      data: { orderId, status: 'CANCELLED', changedAt: now },
+    });
+
+    const updatedOrder = await tx.order.findUnique({ where: { id: orderId } });
+    return {
+      orderCode: updatedOrder.orderCode,
+      status: updatedOrder.status,
+      cancelledAt: updatedOrder.cancelledAt,
+      cancellable: false,
+    };
+  });
+}
+
+/**
+ * Cancels a guest order atomically.
+ * Validates possession, checks eligibility (PENDING or PREPARING and stockRestoredAt === null),
+ * updates status to CANCELLED, restores Variant stock by OrderItem quantity,
+ * and logs an OrderStatusHistory record in a single transaction.
+ */
+export async function cancelGuestOrder({ orderCode, receiverPhone }) {
+  const normalizedOrderCode = normalizeOrderCode(orderCode);
+  const trimmedPhone = validateReceiverPhone(receiverPhone);
+
+  const order = await prisma.order.findUnique({
+    where: { orderCode: normalizedOrderCode },
+  });
+
+  if (!order || !isPhoneMatch(order.receiverPhone, trimmedPhone)) {
+    throw new AppError(ORDER_NOT_FOUND_MESSAGE, 404, 'ORDER_NOT_FOUND');
+  }
+  return cancelAuthorizedOrder(order.id);
+}
+
+export async function cancelOrderForMember({ memberId, orderCode }) {
+  const normalizedOrderCode = normalizeOrderCode(orderCode);
+  const order = await prisma.order.findFirst({
+    where: { orderCode: normalizedOrderCode, userId: memberId },
+  });
+
+  if (!order) {
+    throw new AppError(ORDER_NOT_FOUND_MESSAGE, 404, 'ORDER_NOT_FOUND');
+  }
+  return cancelAuthorizedOrder(order.id);
+}
+
+/**
+ * Shared race-safe transition used by public/member confirmation and, later,
+ * the 48-hour automatic completion worker.
+ */
+export async function completeDeliveredOrder(orderId) {
+  const now = new Date();
+
+  return prisma.$transaction(async (tx) => {
+    const updateResult = await tx.order.updateMany({
+      where: { id: orderId, status: 'DELIVERED' },
+      data: { status: 'COMPLETED', completedAt: now },
+    });
+
+    if (updateResult.count !== 1) {
+      throw new AppError(ORDER_NOT_CONFIRMABLE_MESSAGE, 409, 'ORDER_NOT_CONFIRMABLE');
+    }
+
+    await tx.orderStatusHistory.create({
+      data: { orderId, status: 'COMPLETED', changedAt: now },
+    });
+
+    const updatedOrder = await tx.order.findUnique({
+      where: { id: orderId },
+      include: {
+        statusHistories: {
+          orderBy: [{ changedAt: 'asc' }, { id: 'asc' }],
+        },
       },
     });
 
     return {
-      orderCode: order.orderCode,
-      status: 'CANCELLED',
-      cancelledAt: now,
-      cancellable: false,
+      orderCode: updatedOrder.orderCode,
+      status: updatedOrder.status,
+      completedAt: updatedOrder.completedAt,
+      confirmable: false,
+      timeline: serializeOrderTimeline(updatedOrder.statusHistories),
     };
   });
+}
+
+export async function confirmGuestOrderReceived({ orderCode, receiverPhone }) {
+  const normalizedOrderCode = normalizeOrderCode(orderCode);
+  const trimmedPhone = validateReceiverPhone(receiverPhone);
+  const order = await prisma.order.findUnique({ where: { orderCode: normalizedOrderCode } });
+
+  if (!order || !isPhoneMatch(order.receiverPhone, trimmedPhone)) {
+    throw new AppError(ORDER_NOT_FOUND_MESSAGE, 404, 'ORDER_NOT_FOUND');
+  }
+  return completeDeliveredOrder(order.id);
+}
+
+export async function confirmMemberOrderReceived({ memberId, orderCode }) {
+  const normalizedOrderCode = normalizeOrderCode(orderCode);
+  const order = await prisma.order.findFirst({
+    where: { orderCode: normalizedOrderCode, userId: memberId },
+  });
+
+  if (!order) {
+    throw new AppError(ORDER_NOT_FOUND_MESSAGE, 404, 'ORDER_NOT_FOUND');
+  }
+  return completeDeliveredOrder(order.id);
 }

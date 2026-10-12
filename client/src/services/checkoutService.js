@@ -1,6 +1,6 @@
 /**
  * STEP/LAB Checkout API Service
- * Centralizes checkout quote and guest order placement HTTP calls.
+ * Centralizes checkout quote and Guest/Member order placement HTTP calls.
  * Communicates with backend endpoints (/api/checkout/quote, /api/orders).
  */
 
@@ -43,7 +43,7 @@ export async function getCheckoutQuote(items) {
 }
 
 /**
- * Places a guest order with server-confirmed prices and shipping fee.
+ * Places a Guest or authenticated Member order with server-confirmed values.
  *
  * @param {Object} orderPayload
  * @param {string} orderPayload.receiverName
@@ -54,12 +54,15 @@ export async function getCheckoutQuote(items) {
  * @param {number} orderPayload.expectedShippingFee
  * @returns {Promise<{ orderCode: string, status: string, subtotal: number, shippingFee: number, total: number, paymentMethod: string, items: Array }>}
  */
-export async function createGuestOrder(orderPayload) {
+export async function createOrder(orderPayload, { token = null } = {}) {
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+  if (token) headers.Authorization = `Bearer ${token}`;
+
   const response = await fetch('/api/orders', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers,
     body: JSON.stringify(orderPayload),
   });
 
@@ -70,4 +73,8 @@ export async function createGuestOrder(orderPayload) {
   }
 
   return data?.data;
+}
+
+export function createGuestOrder(orderPayload) {
+  return createOrder(orderPayload);
 }

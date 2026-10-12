@@ -478,7 +478,6 @@ test('Phase 8A Member auth backend and Guest regressions', async (t) => {
           expectedUnitPrice: quotedItem.unitPrice,
         }],
         expectedShippingFee: quote.body.data.shippingFee,
-        userId: user.id,
       },
     });
     assert.equal(created.status, 201);

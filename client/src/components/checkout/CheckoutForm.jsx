@@ -18,6 +18,7 @@ const CheckoutForm = forwardRef(function CheckoutForm(
     submitting,
     disabled,
     submitError,
+    memberEmail,
     summary,
   },
   ref
@@ -41,6 +42,11 @@ const CheckoutForm = forwardRef(function CheckoutForm(
           <p className="text-[11px] text-[#737373] mt-1">
             Vui lòng điền thông tin chính xác để nhân viên giao hàng liên hệ thuận tiện.
           </p>
+          {memberEmail && (
+            <p className="text-[11px] text-[#525252] mt-1.5">
+              Đã đăng nhập với <span className="font-semibold">{memberEmail}</span>
+            </p>
+          )}
         </div>
 
         <div className="space-y-5">
