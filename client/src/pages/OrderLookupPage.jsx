@@ -1,16 +1,24 @@
 import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import OrderLookupForm from '../components/order/OrderLookupForm';
+import OrderActionDialog from '../components/order/OrderActionDialog';
 import OrderDetailCard from '../components/order/OrderDetailCard';
-import CancelConfirmDialog from '../components/order/CancelConfirmDialog';
+import OrderLookupForm from '../components/order/OrderLookupForm';
 import RecentOrders from '../components/order/RecentOrders';
-import { lookupGuestOrder, cancelGuestOrder } from '../services/orderService';
+import {
+  cancelGuestOrder,
+  confirmGuestOrderReceived,
+  lookupGuestOrder,
+} from '../services/orderService';
 import { getRecentOrders } from '../utils/recentOrders';
 
+const STALE_STATUS_MESSAGE =
+  'Trạng thái đơn hàng vừa thay đổi. Thông tin mới nhất đang được cập nhật.';
+const REFRESH_FAILED_MESSAGE =
+  'Đơn hàng đã được cập nhật. Không thể tải lại thông tin mới nhất.';
+
 /**
- * OrderLookupPage Component
- * Provides self-service guest order status lookup and cancellation.
- * Operates without authentication or persistent credentials.
+ * Public ownership-verified order lookup and lifecycle actions.
+ * The verified phone snapshot exists only in this component's React memory.
  */
 export default function OrderLookupPage() {
   const [orderCode, setOrderCode] = useState('');
@@ -18,37 +26,57 @@ export default function OrderLookupPage() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [recentOrders] = useState(() => getRecentOrders());
   const receiverPhoneRef = useRef(null);
+  const cancelButtonRef = useRef(null);
+  const confirmButtonRef = useRef(null);
 
-  // Lookup state
   const [loading, setLoading] = useState(false);
   const [lookupError, setLookupError] = useState(null);
   const [order, setOrder] = useState(null);
+  const [verifiedLookup, setVerifiedLookup] = useState(null);
 
-  // Cancel state
-  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
-  const [cancelling, setCancelling] = useState(false);
-  const [cancelSuccessMessage, setCancelSuccessMessage] = useState(null);
-  const [cancelErrorMessage, setCancelErrorMessage] = useState(null);
+  const [dialogAction, setDialogAction] = useState(null);
+  const [mutating, setMutating] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [stateUncertain, setStateUncertain] = useState(false);
+  const [lifecycleMessage, setLifecycleMessage] = useState('');
+  const [lifecycleTone, setLifecycleTone] = useState('success');
+  const [refreshErrorMessage, setRefreshErrorMessage] = useState('');
+  const [refreshSuccessMessage, setRefreshSuccessMessage] = useState('');
+
+  const clearLifecycleState = () => {
+    setDialogAction(null);
+    setStateUncertain(false);
+    setLifecycleMessage('');
+    setLifecycleTone('success');
+    setRefreshErrorMessage('');
+    setRefreshSuccessMessage('');
+  };
+
+  const showNeutralNotFound = () => {
+    setOrder(null);
+    setVerifiedLookup(null);
+    clearLifecycleState();
+    setLookupError({
+      message: 'Không tìm thấy đơn hàng với thông tin đã cung cấp.',
+      secondary: 'Vui lòng kiểm tra lại mã đơn hàng và số điện thoại.',
+    });
+  };
 
   /**
-   * Prefills only the remembered order code. Ownership verification remains
-   * the existing receiverPhone + explicit form submission flow.
+   * A recent-order shortcut carries only an order code. It never restores or
+   * infers ownership credentials, and it never performs an automatic lookup.
    */
   const handleRecentOrderSelect = (recentOrderCode) => {
     setOrderCode(recentOrderCode);
     setFieldErrors({});
     setLookupError(null);
     setOrder(null);
-    setCancelSuccessMessage(null);
-    setCancelErrorMessage(null);
-    setIsCancelDialogOpen(false);
+    setVerifiedLookup(null);
+    clearLifecycleState();
 
     requestAnimationFrame(() => receiverPhoneRef.current?.focus());
   };
 
-  /**
-   * Client-side UX validation before sending request
-   */
   const validateForm = () => {
     const errors = {};
     const code = orderCode.trim();
@@ -74,33 +102,34 @@ export default function OrderLookupPage() {
     return Object.keys(errors).length === 0;
   };
 
-  /**
-   * Handles lookup form submission
-   */
-  const handleLookupSubmit = async (e) => {
-    e.preventDefault();
-
+  const handleLookupSubmit = async (event) => {
+    event.preventDefault();
     if (loading) return;
+
+    // A new manual attempt immediately invalidates credentials for any old result.
+    setOrder(null);
+    setVerifiedLookup(null);
+    setLookupError(null);
+    clearLifecycleState();
+
     if (!validateForm()) return;
 
+    const credentials = {
+      orderCode: orderCode.trim(),
+      receiverPhone: receiverPhone.trim(),
+    };
     setLoading(true);
-    setLookupError(null);
-    setCancelSuccessMessage(null);
-    setCancelErrorMessage(null);
 
     try {
-      const result = await lookupGuestOrder({
-        orderCode: orderCode.trim(),
-        receiverPhone: receiverPhone.trim(),
-      });
+      const result = await lookupGuestOrder(credentials);
       setOrder(result);
-    } catch (err) {
-      setOrder(null);
-      if (err.status === 404 || err.code === 'ORDER_NOT_FOUND') {
-        setLookupError({
-          message: 'Không tìm thấy đơn hàng với thông tin đã cung cấp.',
-          secondary: 'Vui lòng kiểm tra lại mã đơn hàng và số điện thoại.',
-        });
+      setVerifiedLookup({
+        orderCode: result.orderCode,
+        receiverPhone: credentials.receiverPhone,
+      });
+    } catch (error) {
+      if (error.status === 404 || error.code === 'ORDER_NOT_FOUND') {
+        showNeutralNotFound();
       } else {
         setLookupError({
           message: 'Không thể tra cứu đơn hàng lúc này. Vui lòng thử lại.',
@@ -111,63 +140,106 @@ export default function OrderLookupPage() {
     }
   };
 
-  /**
-   * Executes authoritative order cancellation
-   */
-  const handleCancelConfirm = async () => {
-    if (!order || cancelling) return;
+  const refreshVerifiedOrder = async (credentials, successMessage = '') => {
+    if (!credentials) return false;
 
-    setCancelling(true);
-    setCancelErrorMessage(null);
+    setRefreshing(true);
+    setStateUncertain(true);
+    setRefreshErrorMessage('');
+    setRefreshSuccessMessage(successMessage);
 
     try {
-      await cancelGuestOrder({
-        orderCode: order.orderCode,
-        receiverPhone: receiverPhone.trim(),
-      });
-
-      // Refetch authoritative full order snapshot
-      try {
-        const freshOrder = await lookupGuestOrder({
-          orderCode: order.orderCode,
-          receiverPhone: receiverPhone.trim(),
-        });
-        setOrder(freshOrder);
-      } catch {
-        // Fallback update if immediate re-lookup fails
-        setOrder((prev) => (prev ? { ...prev, status: 'CANCELLED', cancellable: false } : null));
+      const freshOrder = await lookupGuestOrder(credentials);
+      setOrder(freshOrder);
+      setStateUncertain(false);
+      setRefreshSuccessMessage('');
+      if (successMessage) {
+        setLifecycleMessage(successMessage);
+        setLifecycleTone('success');
       }
-
-      setCancelSuccessMessage('Đơn hàng đã được hủy thành công.');
-      setIsCancelDialogOpen(false);
-    } catch (err) {
-      setIsCancelDialogOpen(false);
-
-      if (err.status === 409 || err.code === 'ORDER_NOT_CANCELLABLE') {
-        setCancelErrorMessage('Đơn hàng không thể hủy ở trạng thái hiện tại.');
-        // Refresh order to reflect current status (e.g. if transitioned to SHIPPING)
-        try {
-          const refreshed = await lookupGuestOrder({
-            orderCode: order.orderCode,
-            receiverPhone: receiverPhone.trim(),
-          });
-          setOrder(refreshed);
-        } catch {
-          // ignore
-        }
-      } else if (err.status === 404 || err.code === 'ORDER_NOT_FOUND') {
-        setCancelErrorMessage('Không tìm thấy đơn hàng với thông tin đã cung cấp.');
+      return true;
+    } catch (error) {
+      if (error.status === 404 || error.code === 'ORDER_NOT_FOUND') {
+        showNeutralNotFound();
       } else {
-        setCancelErrorMessage('Không thể hủy đơn hàng lúc này. Vui lòng thử lại.');
+        setStateUncertain(true);
+        setRefreshErrorMessage(REFRESH_FAILED_MESSAGE);
       }
+      return false;
     } finally {
-      setCancelling(false);
+      setRefreshing(false);
     }
   };
 
+  const handleRetryRefresh = () => {
+    refreshVerifiedOrder(verifiedLookup, refreshSuccessMessage);
+  };
+
+  const handleLifecycleConfirm = async () => {
+    if (!dialogAction || !order || !verifiedLookup || mutating) return;
+
+    const currentAction = dialogAction;
+    const credentials = verifiedLookup;
+    setMutating(true);
+    setLifecycleMessage('');
+    setLifecycleTone('success');
+    setRefreshErrorMessage('');
+
+    try {
+      if (currentAction === 'cancel') {
+        await cancelGuestOrder(credentials);
+      } else {
+        await confirmGuestOrderReceived(credentials);
+      }
+
+      setDialogAction(null);
+      await refreshVerifiedOrder(
+        credentials,
+        currentAction === 'cancel'
+          ? 'Đơn hàng đã được hủy thành công.'
+          : 'Đã xác nhận nhận hàng thành công.'
+      );
+    } catch (error) {
+      setDialogAction(null);
+
+      if (error.status === 404 || error.code === 'ORDER_NOT_FOUND') {
+        showNeutralNotFound();
+      } else if (
+        error.code === 'ORDER_NOT_CANCELLABLE'
+        || error.code === 'ORDER_NOT_CONFIRMABLE'
+      ) {
+        setLifecycleMessage(STALE_STATUS_MESSAGE);
+        setLifecycleTone('warning');
+        setStateUncertain(true);
+        await refreshVerifiedOrder(credentials);
+      } else {
+        setLifecycleMessage(
+          'Không thể xác định kết quả yêu cầu vừa gửi. Thông tin mới nhất đang được cập nhật.'
+        );
+        setLifecycleTone('warning');
+        setStateUncertain(true);
+        await refreshVerifiedOrder(credentials);
+      }
+    } finally {
+      setMutating(false);
+    }
+  };
+
+  const closeDialog = () => {
+    if (!mutating) setDialogAction(null);
+  };
+
+  const isCancelDialog = dialogAction === 'cancel';
+  const actionsAvailable = Boolean(
+    verifiedLookup
+    && order
+    && verifiedLookup.orderCode === order.orderCode
+    && !stateUncertain
+    && !refreshing
+  );
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-      {/* Breadcrumb Navigation */}
       <nav aria-label="Breadcrumb" className="mb-6">
         <ol className="flex items-center space-x-2 text-xs text-[#737373]">
           <li>
@@ -182,7 +254,6 @@ export default function OrderLookupPage() {
         </ol>
       </nav>
 
-      {/* Page Header */}
       <div className="border-b border-[#e5e5e0] pb-4 mb-8">
         <h1 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-[#121212]">
           Tra cứu đơn hàng
@@ -192,29 +263,27 @@ export default function OrderLookupPage() {
         </p>
       </div>
 
-      {/* Main Content Area */}
       <div className="space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1.25fr)_minmax(240px,0.75fr)] gap-6 items-start">
-          {/* Mobile-first recovery shortcut; moves beside the form on desktop. */}
           <div className="md:order-2 min-w-0">
-            <RecentOrders
-              orders={recentOrders}
-              onSelect={handleRecentOrderSelect}
-            />
+            <RecentOrders orders={recentOrders} onSelect={handleRecentOrderSelect} />
           </div>
 
-          {/* Search Form */}
           <div className="md:order-1 min-w-0">
             <OrderLookupForm
               orderCode={orderCode}
               receiverPhone={receiverPhone}
-              onOrderCodeChange={(val) => {
-                setOrderCode(val);
-                if (fieldErrors.orderCode) setFieldErrors((prev) => ({ ...prev, orderCode: '' }));
+              onOrderCodeChange={(value) => {
+                setOrderCode(value);
+                if (fieldErrors.orderCode) {
+                  setFieldErrors((previous) => ({ ...previous, orderCode: '' }));
+                }
               }}
-              onPhoneChange={(val) => {
-                setReceiverPhone(val);
-                if (fieldErrors.receiverPhone) setFieldErrors((prev) => ({ ...prev, receiverPhone: '' }));
+              onPhoneChange={(value) => {
+                setReceiverPhone(value);
+                if (fieldErrors.receiverPhone) {
+                  setFieldErrors((previous) => ({ ...previous, receiverPhone: '' }));
+                }
               }}
               onSubmit={handleLookupSubmit}
               loading={loading}
@@ -225,25 +294,40 @@ export default function OrderLookupPage() {
           </div>
         </div>
 
-        {/* Order Details Presentation */}
         {order && (
           <div className="pt-2">
             <OrderDetailCard
               order={order}
-              onOpenCancel={() => setIsCancelDialogOpen(true)}
-              cancelSuccessMessage={cancelSuccessMessage}
-              cancelErrorMessage={cancelErrorMessage}
+              onOpenCancel={() => setDialogAction('cancel')}
+              onOpenConfirm={() => setDialogAction('confirm')}
+              cancelButtonRef={cancelButtonRef}
+              confirmButtonRef={confirmButtonRef}
+              lifecycleMessage={lifecycleMessage}
+              lifecycleTone={lifecycleTone}
+              refreshErrorMessage={refreshErrorMessage}
+              onRetryRefresh={handleRetryRefresh}
+              refreshing={refreshing}
+              actionsAvailable={actionsAvailable}
             />
           </div>
         )}
       </div>
 
-      {/* Accessible Cancel Confirmation Modal */}
-      <CancelConfirmDialog
-        isOpen={isCancelDialogOpen}
-        onClose={() => !cancelling && setIsCancelDialogOpen(false)}
-        onConfirm={handleCancelConfirm}
-        cancelling={cancelling}
+      <OrderActionDialog
+        isOpen={Boolean(dialogAction)}
+        title={isCancelDialog ? 'Hủy đơn hàng này?' : 'Xác nhận đã nhận hàng?'}
+        description={
+          isCancelDialog
+            ? 'Bạn có chắc muốn hủy đơn hàng này? Sau khi xác nhận, đơn hàng không thể tiếp tục xử lý.'
+            : 'Xác nhận bạn đã nhận được đơn hàng này? Đơn hàng sẽ được đánh dấu là hoàn tất.'
+        }
+        confirmLabel={isCancelDialog ? 'Xác nhận hủy' : 'Xác nhận đã nhận'}
+        pendingLabel={isCancelDialog ? 'Đang hủy...' : 'Đang xác nhận...'}
+        tone={isCancelDialog ? 'danger' : 'primary'}
+        busy={mutating}
+        onClose={closeDialog}
+        onConfirm={handleLifecycleConfirm}
+        returnFocusRef={isCancelDialog ? cancelButtonRef : confirmButtonRef}
       />
     </div>
   );

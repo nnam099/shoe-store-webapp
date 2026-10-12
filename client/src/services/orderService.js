@@ -1,7 +1,6 @@
 /**
  * STEP/LAB Order API Service
- * Centralizes guest order lookup and cancellation HTTP calls.
- * Communicates with backend endpoints (/api/orders/lookup, /api/orders/:orderCode/cancel).
+ * Centralizes public order lookup and lifecycle HTTP calls.
  */
 
 /**
@@ -56,6 +55,34 @@ export async function lookupGuestOrder({ orderCode, receiverPhone }) {
 export async function cancelGuestOrder({ orderCode, receiverPhone }) {
   const normalizedCode = encodeURIComponent(orderCode?.trim() || '');
   const response = await fetch(`/api/orders/${normalizedCode}/cancel`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      receiverPhone: receiverPhone?.trim(),
+    }),
+  });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw createApiError(response, data);
+  }
+
+  return data?.data;
+}
+
+/**
+ * Confirms receipt of an ownership-verified public order.
+ *
+ * @param {Object} params
+ * @param {string} params.orderCode
+ * @param {string} params.receiverPhone
+ */
+export async function confirmGuestOrderReceived({ orderCode, receiverPhone }) {
+  const normalizedCode = encodeURIComponent(orderCode?.trim() || '');
+  const response = await fetch(`/api/orders/${normalizedCode}/confirm-received`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

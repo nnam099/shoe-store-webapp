@@ -3,6 +3,7 @@ import {
   formatOrderDateTime,
   getOrderStatusPresentation,
 } from '../../utils/orderPresentation';
+import OrderTimeline from './OrderTimeline';
 
 /**
  * OrderDetailCard Component
@@ -11,8 +12,15 @@ import {
 export default function OrderDetailCard({
   order,
   onOpenCancel,
-  cancelSuccessMessage,
-  cancelErrorMessage,
+  onOpenConfirm,
+  cancelButtonRef,
+  confirmButtonRef,
+  lifecycleMessage,
+  lifecycleTone = 'success',
+  refreshErrorMessage,
+  onRetryRefresh,
+  refreshing,
+  actionsAvailable = true,
 }) {
   if (!order) return null;
 
@@ -20,30 +28,35 @@ export default function OrderDetailCard({
 
   return (
     <div className="bg-white border border-[#e5e5e0] rounded-xs shadow-xs p-6 sm:p-7 space-y-6">
-      {/* Cancellation Alerts */}
-      {cancelSuccessMessage && (
+      {/* Lifecycle status alerts */}
+      {lifecycleMessage && (
         <div
           role="status"
           aria-live="polite"
-          className="p-4 bg-[#ecfdf5] border border-[#a7f3d0] text-[#065f46] text-xs font-bold rounded-xs flex items-center gap-2"
+          className={`flex items-center gap-2 rounded-xs border p-4 text-xs font-bold ${
+            lifecycleTone === 'warning'
+              ? 'border-[#fde68a] bg-[#fffbeb] text-[#92400e]'
+              : 'border-[#a7f3d0] bg-[#ecfdf5] text-[#065f46]'
+          }`}
         >
-          <svg className="w-4 h-4 shrink-0 text-[#059669]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-          </svg>
-          <span>{cancelSuccessMessage}</span>
+          <span>{lifecycleMessage}</span>
         </div>
       )}
 
-      {cancelErrorMessage && (
+      {refreshErrorMessage && (
         <div
           role="alert"
-          aria-live="assertive"
-          className="p-4 bg-[#fef2f2] border border-[#fecaca] text-[#b91c1c] text-xs font-bold rounded-xs flex items-center gap-2"
+          className="rounded-xs border border-[#fecaca] bg-[#fef2f2] p-4 text-xs font-bold text-[#b91c1c]"
         >
-          <svg className="w-4 h-4 shrink-0 text-[#dc2626]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span>{cancelErrorMessage}</span>
+          <p>{refreshErrorMessage}</p>
+          <button
+            type="button"
+            onClick={onRetryRefresh}
+            disabled={refreshing}
+            className="mt-3 min-h-[38px] border border-current px-4 text-[11px] uppercase tracking-wider disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {refreshing ? 'Đang tải...' : 'Thử lại'}
+          </button>
         </div>
       )}
 
@@ -144,6 +157,11 @@ export default function OrderDetailCard({
         </div>
       </div>
 
+      {/* Authoritative order status history */}
+      <div className="border-t border-[#e5e5e0] pt-5">
+        <OrderTimeline timeline={order.timeline} />
+      </div>
+
       {/* Pricing Breakdown */}
       <div className="border-t border-[#e5e5e0] pt-4 space-y-2.5 text-xs">
         <div className="flex justify-between text-[#525252]">
@@ -166,19 +184,29 @@ export default function OrderDetailCard({
         </div>
       </div>
 
-      {/* Cancellation Action (Rendered ONLY if order.cancellable === true) */}
-      {order.cancellable && (
-        <div className="border-t border-[#e5e5e0] pt-5 flex justify-end">
-          <button
-            type="button"
-            onClick={onOpenCancel}
-            className="w-full sm:w-auto min-h-[44px] px-6 py-2.5 border border-[#dc2626] text-[#dc2626] hover:bg-[#dc2626] hover:text-white text-xs font-bold uppercase tracking-wider rounded-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-            <span>Hủy đơn hàng</span>
-          </button>
+      {/* Lifecycle actions require a currently verified, authoritative result. */}
+      {actionsAvailable && (order.cancellable || order.confirmable) && (
+        <div className="flex flex-col justify-end gap-2.5 border-t border-[#e5e5e0] pt-5 sm:flex-row">
+          {order.cancellable && (
+            <button
+              ref={cancelButtonRef}
+              type="button"
+              onClick={onOpenCancel}
+              className="flex min-h-[44px] w-full items-center justify-center rounded-xs border border-[#dc2626] px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-[#dc2626] transition-colors hover:bg-[#dc2626] hover:text-white sm:w-auto"
+            >
+              Hủy đơn hàng
+            </button>
+          )}
+          {order.confirmable && (
+            <button
+              ref={confirmButtonRef}
+              type="button"
+              onClick={onOpenConfirm}
+              className="flex min-h-[44px] w-full items-center justify-center rounded-xs bg-[#121212] px-6 py-2.5 text-xs font-bold uppercase tracking-wider text-white transition-colors hover:bg-[#991b1b] sm:w-auto"
+            >
+              Đã nhận hàng
+            </button>
+          )}
         </div>
       )}
     </div>
