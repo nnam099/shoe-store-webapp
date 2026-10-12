@@ -71,7 +71,7 @@ export default function ForgotPasswordPage() {
       title="Quên mật khẩu"
       railMeta={`0${step} / 02`}
       description="Đặt lại mật khẩu để tiếp tục truy cập tài khoản của bạn."
-      crop="security"
+      crop={step === 1 ? 'passwordResetStepOne' : 'security'}
       footer={(
         <Link className="font-bold text-[#121212] underline underline-offset-4" to="/login">
           Quay lại đăng nhập

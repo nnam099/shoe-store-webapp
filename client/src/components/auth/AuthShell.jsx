@@ -3,6 +3,7 @@ import { getAssetUrl } from '../../config/site';
 const VISUAL_CROPS = {
   identity: 'object-[center_43%] sm:object-[center_47%] lg:object-[center_58%]',
   security: 'object-[center_43%] sm:object-[center_47%] lg:object-[center_54%]',
+  passwordResetStepOne: 'object-[center_43%] sm:object-[center_47%] lg:object-[center_72%]',
 };
 
 function AuthVisualPanel({ eyebrow, title, railMeta, description, crop }) {
