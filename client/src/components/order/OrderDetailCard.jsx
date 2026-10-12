@@ -1,7 +1,9 @@
 import { formatPrice, getAssetUrl } from '../../config/site';
 import {
   formatOrderDateTime,
+  getOrderTotalLabel,
   getOrderStatusPresentation,
+  isCancelledOrder,
 } from '../../utils/orderPresentation';
 import OrderTimeline from './OrderTimeline';
 
@@ -25,6 +27,7 @@ export default function OrderDetailCard({
   if (!order) return null;
 
   const statusInfo = getOrderStatusPresentation(order.status);
+  const cancelled = isCancelledOrder(order.status);
 
   return (
     <div className="bg-white border border-[#e5e5e0] rounded-xs shadow-xs p-6 sm:p-7 space-y-6">
@@ -176,12 +179,17 @@ export default function OrderDetailCard({
 
         <div className="border-t border-[#e5e5e0] pt-3 flex justify-between items-baseline">
           <span className="font-extrabold text-[#121212] uppercase tracking-wider">
-            Tổng thanh toán:
+            {getOrderTotalLabel(order.status)}:
           </span>
           <span className="text-lg font-black text-[#121212] tracking-tight">
             {formatPrice(order.total)}
           </span>
         </div>
+        {cancelled && (
+          <p className="border-t border-[#e5e5e0] pt-3 text-[11px] font-bold text-[#991b1b]">
+            Đơn hàng đã hủy • Không cần thanh toán
+          </p>
+        )}
       </div>
 
       {/* Lifecycle actions require a currently verified, authoritative result. */}

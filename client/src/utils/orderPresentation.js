@@ -34,6 +34,14 @@ export function getOrderStatusPresentation(status) {
   return ORDER_STATUS_PRESENTATION[status] || UNKNOWN_STATUS;
 }
 
+export function isCancelledOrder(status) {
+  return status === 'CANCELLED';
+}
+
+export function getOrderTotalLabel(status) {
+  return isCancelledOrder(status) ? 'Giá trị đơn hàng' : 'Tổng thanh toán';
+}
+
 export function formatOrderDateTime(value) {
   if (!value) return '';
   const date = new Date(value);

@@ -12,7 +12,9 @@ import {
 } from '../services/memberOrderService';
 import {
   formatOrderDateTime,
+  getOrderTotalLabel,
   getOrderStatusPresentation,
+  isCancelledOrder,
 } from '../utils/orderPresentation';
 
 const STALE_STATUS_MESSAGE =
@@ -144,6 +146,7 @@ export default function MemberOrderDetailPage() {
   };
 
   const status = getOrderStatusPresentation(order?.status);
+  const cancelled = isCancelledOrder(order?.status);
   const isCancelDialog = dialogAction === 'cancel';
 
   return (
@@ -261,8 +264,13 @@ export default function MemberOrderDetailPage() {
                 <dl className="mt-5 space-y-3 text-xs">
                   <div className="flex justify-between gap-4"><dt className="text-[#525252]">Tạm tính</dt><dd className="font-bold">{formatPrice(order.subtotal)}</dd></div>
                   <div className="flex justify-between gap-4"><dt className="text-[#525252]">Phí vận chuyển</dt><dd className="font-bold">{formatPrice(order.shippingFee)}</dd></div>
-                  <div className="flex justify-between gap-4 border-t border-[#d4d4ce] pt-3"><dt className="font-extrabold uppercase">Tổng thanh toán</dt><dd className="text-lg font-black">{formatPrice(order.total)}</dd></div>
+                  <div className="flex justify-between gap-4 border-t border-[#d4d4ce] pt-3"><dt className="font-extrabold uppercase">{getOrderTotalLabel(order.status)}</dt><dd className="text-lg font-black">{formatPrice(order.total)}</dd></div>
                 </dl>
+                {cancelled && (
+                  <p className="mt-4 border-t border-[#eeeeea] pt-4 text-[11px] font-bold text-[#991b1b]">
+                    Đơn hàng đã hủy • Không cần thanh toán
+                  </p>
+                )}
                 <div className="mt-5 border-t border-[#eeeeea] pt-4 text-xs">
                   <p className="text-[#737373]">Phương thức thanh toán</p>
                   <p className="mt-1 font-bold">Thanh toán khi nhận hàng (COD)</p>

@@ -6,6 +6,7 @@ import { useAuth } from '../context/authContextValue';
 import { getMemberOrders } from '../services/memberOrderService';
 import {
   formatOrderDateTime,
+  getOrderTotalLabel,
   getOrderStatusPresentation,
 } from '../utils/orderPresentation';
 
@@ -194,7 +195,7 @@ export default function MemberOrdersPage() {
 
                       <div className="lg:text-right">
                         <p className="text-[10px] font-bold uppercase tracking-wider text-[#737373]">
-                          Tổng thanh toán
+                          {getOrderTotalLabel(order.status)}
                         </p>
                         <p className="mt-1 text-lg font-black text-[#121212]">{formatPrice(order.total)}</p>
                         <Link
