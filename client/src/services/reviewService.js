@@ -1,0 +1,62 @@
+function createReviewApiError(response, data) {
+  const error = new Error(
+    data?.error?.message || 'Không thể hoàn tất yêu cầu đánh giá lúc này.'
+  );
+  error.status = response.status;
+  error.code = data?.error?.code || 'UNKNOWN_ERROR';
+  error.issues = data?.error?.issues || [];
+  return error;
+}
+
+async function reviewRequest(path, { method = 'GET', token, body } = {}) {
+  const headers = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+
+  let response;
+  try {
+    response = await fetch(`/api${path}`, {
+      method,
+      headers,
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+    });
+  } catch {
+    const error = new Error('Không thể kết nối đến máy chủ. Vui lòng thử lại.');
+    error.code = 'NETWORK_ERROR';
+    throw error;
+  }
+
+  const data = await response.json().catch(() => null);
+  if (!response.ok) throw createReviewApiError(response, data);
+  return data?.data;
+}
+
+export function getProductReviews(slug, { page = 1, limit = 10 } = {}) {
+  const query = new URLSearchParams({
+    page: String(page),
+    limit: String(limit),
+  });
+  return reviewRequest(`/products/${encodeURIComponent(slug)}/reviews?${query}`);
+}
+
+export function getMemberReviewState(token, slug) {
+  return reviewRequest(`/member/products/${encodeURIComponent(slug)}/review-state`, {
+    token,
+  });
+}
+
+export function createReview(token, slug, payload) {
+  return reviewRequest(`/products/${encodeURIComponent(slug)}/reviews`, {
+    method: 'POST',
+    token,
+    body: payload,
+  });
+}
+
+export function updateReview(token, reviewId, payload) {
+  return reviewRequest(`/reviews/${encodeURIComponent(reviewId)}`, {
+    method: 'PATCH',
+    token,
+    body: payload,
+  });
+}

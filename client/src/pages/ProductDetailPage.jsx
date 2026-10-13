@@ -9,6 +9,7 @@ import SizeSelector from '../components/product-detail/SizeSelector';
 import QuantitySelector from '../components/product-detail/QuantitySelector';
 import SizeGuideModal from '../components/product-detail/SizeGuideModal';
 import ProductNotFound from '../components/product-detail/ProductNotFound';
+import ProductReviews from '../components/product-detail/ProductReviews';
 
 /**
  * ProductDetailPage Component
@@ -310,17 +311,10 @@ function ProductDetailPage() {
               </div>
             </div>
 
-            {/* Reviews Section: Neutral Deferred State */}
-            <div className="border-t border-[#e5e5e0] pt-6">
-              <h2 className="text-xs font-extrabold uppercase tracking-widest text-[#121212] mb-3">
-                Đánh giá sản phẩm
-              </h2>
-              <div className="p-4 bg-white border border-[#e5e5e0] rounded-xs text-xs text-[#737373] leading-relaxed">
-                Đánh giá sản phẩm sẽ được hiển thị khi dữ liệu tài khoản, đơn hàng và đánh giá được kết nối.
-              </div>
-            </div>
           </div>
         </div>
+
+        <ProductReviews key={product.slug} productSlug={product.slug} />
       </div>
 
       {/* Size Guide Modal */}
