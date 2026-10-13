@@ -11,6 +11,7 @@ import ReviewForm from './ReviewForm';
 import ReviewRating from './ReviewRating';
 
 const REVIEWS_PER_PAGE = 10;
+const RATING_FILTERS = [5, 4, 3, 2, 1];
 
 function formatReviewDate(value) {
   const date = new Date(value);
@@ -36,9 +37,11 @@ function wasMeaningfullyEdited(review) {
 function Summary({ summary }) {
   if (!summary || summary.reviewCount === 0) {
     return (
-      <div>
-        <p className="text-2xl font-black uppercase tracking-tight text-[#121212]">Chưa có đánh giá</p>
-        <p className="mt-2 text-xs leading-5 text-[#737373]">
+      <div className="max-w-sm py-1">
+        <p className="text-xl font-black uppercase tracking-tight text-[#121212]">
+          Chưa có đánh giá
+        </p>
+        <p className="mt-3 text-sm leading-6 text-[#62625d]">
           Hãy là người đầu tiên chia sẻ trải nghiệm về sản phẩm.
         </p>
       </div>
@@ -48,17 +51,209 @@ function Summary({ summary }) {
   const average = Number(summary.averageRating);
   return (
     <div>
-      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <span className="text-4xl font-black tracking-tight text-[#121212]">
+      <div className="flex items-baseline gap-2">
+        <span className="text-5xl font-black leading-none tracking-[-0.05em] text-[#121212]">
           {average.toFixed(1)}
         </span>
-        <span className="text-sm font-bold text-[#737373]">/ 5</span>
+        <span className="text-sm font-bold text-[#73736e]">/ 5</span>
       </div>
-      <div className="mt-3">
+      <div className="mt-4">
         <ReviewRating rating={average} />
       </div>
-      <p className="mt-3 text-xs font-bold text-[#525252]">
+      <p className="mt-3 text-xs font-bold uppercase tracking-[0.12em] text-[#52524e]">
         {summary.reviewCount} đánh giá
+      </p>
+    </div>
+  );
+}
+
+function RatingDistribution({ summary, selectedRating, onSelect }) {
+  if (!summary || summary.reviewCount === 0) return null;
+
+  return (
+    <div className="mt-7 border-t border-[#d4d4ce] pt-6">
+      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#121212]">
+        Phân bố đánh giá
+      </p>
+      <div className="mt-4 space-y-1.5">
+        {RATING_FILTERS.map((rating) => {
+          const count = summary.distribution?.[rating] ?? 0;
+          const percentage = summary.reviewCount > 0
+            ? (count / summary.reviewCount) * 100
+            : 0;
+          const active = selectedRating === rating;
+
+          return (
+            <button
+              key={rating}
+              type="button"
+              aria-label={`Lọc đánh giá ${rating} sao, ${count} đánh giá`}
+              aria-pressed={active}
+              onClick={() => onSelect(rating)}
+              className={`group flex min-h-11 w-full items-center gap-3 border px-2 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#991b1b] ${
+                active
+                  ? 'border-[#991b1b] bg-[#fff5f5]'
+                  : 'border-transparent hover:border-[#d4d4ce] hover:bg-[#fafaf8]'
+              }`}
+            >
+              <span className={`w-9 shrink-0 text-xs font-black ${active ? 'text-[#991b1b]' : 'text-[#292927]'}`}>
+                {rating}★
+              </span>
+              <span
+                role="progressbar"
+                aria-label={`${percentage.toFixed(0)} phần trăm đánh giá ${rating} sao`}
+                aria-valuemin="0"
+                aria-valuemax={summary.reviewCount}
+                aria-valuenow={count}
+                className="h-1.5 min-w-0 flex-1 overflow-hidden bg-[#e6e6e0]"
+              >
+                <span
+                  className={`block h-full transition-[width] duration-300 ${
+                    active ? 'bg-[#7f1d1d]' : 'bg-[#991b1b]'
+                  }`}
+                  style={{ width: `${percentage}%` }}
+                />
+              </span>
+              <span className={`w-6 shrink-0 text-right text-xs font-bold ${active ? 'text-[#991b1b]' : 'text-[#73736e]'}`}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function MemberReviewPanel({
+  isAuthenticated,
+  isInitializing,
+  memberLoading,
+  memberError,
+  memberState,
+  editorMode,
+  isSubmitting,
+  onRetry,
+  onEdit,
+  onCreate,
+  onCancelEditor,
+  onSubmit,
+}) {
+  if (isInitializing || memberLoading) {
+    return (
+      <p role="status" className="text-xs font-semibold text-[#73736e]">
+        Đang tải trạng thái đánh giá...
+      </p>
+    );
+  }
+
+  if (memberError) {
+    return (
+      <div>
+        <p role="alert" className="text-xs font-semibold leading-5 text-[#991b1b]">
+          {memberError}
+        </p>
+        <button
+          type="button"
+          onClick={onRetry}
+          className="mt-4 min-h-11 border border-[#121212] px-5 text-xs font-extrabold uppercase tracking-wider hover:bg-[#121212] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#991b1b]"
+        >
+          Thử lại
+        </button>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div>
+        <h3 className="text-sm font-black uppercase tracking-wide">Chia sẻ trải nghiệm của bạn</h3>
+        <p className="mt-2 text-xs leading-5 text-[#52524e]">
+          Đăng nhập và hoàn tất đơn hàng có sản phẩm này để có thể đánh giá.
+        </p>
+        <Link
+          to="/login"
+          className="mt-5 inline-flex min-h-11 items-center bg-[#121212] px-6 text-xs font-extrabold uppercase tracking-wider text-white hover:bg-[#991b1b] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#991b1b]"
+        >
+          Đăng nhập
+        </Link>
+      </div>
+    );
+  }
+
+  if (memberState?.ownReview) {
+    const ownReview = memberState.ownReview;
+    return (
+      <div>
+        <div className="flex flex-col gap-4">
+          <div>
+            <h3 className="text-sm font-black uppercase tracking-wide">Đánh giá của bạn</h3>
+            <div className="mt-3"><ReviewRating rating={ownReview.rating} /></div>
+            <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-[#333330]">
+              {ownReview.comment}
+            </p>
+            <p className="mt-3 text-[11px] text-[#73736e]">
+              {wasMeaningfullyEdited(ownReview) ? 'Đã chỉnh sửa' : 'Đã đăng'} ·{' '}
+              <time dateTime={ownReview.updatedAt}>{formatReviewDate(ownReview.updatedAt)}</time>
+            </p>
+          </div>
+          {editorMode !== 'edit' && (
+            <button
+              type="button"
+              onClick={onEdit}
+              className="min-h-11 w-full border border-[#121212] px-5 text-xs font-extrabold uppercase tracking-wider hover:border-[#991b1b] hover:bg-[#991b1b] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#991b1b]"
+            >
+              Chỉnh sửa đánh giá
+            </button>
+          )}
+        </div>
+        {editorMode === 'edit' && (
+          <div className="mt-6">
+            <ReviewForm
+              initialReview={ownReview}
+              isSubmitting={isSubmitting}
+              onCancel={onCancelEditor}
+              onSubmit={onSubmit}
+            />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (memberState?.eligible) {
+    return (
+      <div>
+        <h3 className="text-sm font-black uppercase tracking-wide">Sản phẩm đã đồng hành cùng bạn?</h3>
+        <p className="mt-2 text-xs leading-5 text-[#52524e]">
+          Chia sẻ đánh giá để giúp cộng đồng STEP/LAB lựa chọn dễ dàng hơn.
+        </p>
+        {editorMode === 'create' ? (
+          <div className="mt-6">
+            <ReviewForm
+              isSubmitting={isSubmitting}
+              onCancel={onCancelEditor}
+              onSubmit={onSubmit}
+            />
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={onCreate}
+            className="mt-5 min-h-11 w-full bg-[#991b1b] px-6 text-xs font-extrabold uppercase tracking-wider text-white hover:bg-[#7f1d1d] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#991b1b]"
+          >
+            Viết đánh giá
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h3 className="text-sm font-black uppercase tracking-wide">Đánh giá từ đơn hàng hoàn tất</h3>
+      <p className="mt-2 text-xs leading-5 text-[#52524e]">
+        Bạn có thể đánh giá sản phẩm sau khi đơn hàng hoàn tất.
       </p>
     </div>
   );
@@ -67,6 +262,7 @@ function Summary({ summary }) {
 export default function ProductReviews({ productSlug }) {
   const { token, isAuthenticated, isInitializing, clearSession } = useAuth();
   const [reviewPage, setReviewPage] = useState(1);
+  const [selectedRating, setSelectedRating] = useState(null);
   const [publicData, setPublicData] = useState(null);
   const [publicLoading, setPublicLoading] = useState(true);
   const [publicError, setPublicError] = useState('');
@@ -89,13 +285,20 @@ export default function ProductReviews({ productSlug }) {
     setActionMessage('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại để tiếp tục đánh giá.');
   }, [clearSession]);
 
-  const loadPublicReviews = useCallback(async ({ page = reviewPage } = {}) => {
+  const loadPublicReviews = useCallback(async ({
+    page = reviewPage,
+    rating = selectedRating,
+  } = {}) => {
     const requestId = publicRequestRef.current + 1;
     publicRequestRef.current = requestId;
     setPublicLoading(true);
     setPublicError('');
     try {
-      const data = await getProductReviews(productSlug, { page, limit: REVIEWS_PER_PAGE });
+      const data = await getProductReviews(productSlug, {
+        page,
+        limit: REVIEWS_PER_PAGE,
+        rating,
+      });
       if (publicRequestRef.current !== requestId) return false;
       setPublicData(data);
       return true;
@@ -110,7 +313,7 @@ export default function ProductReviews({ productSlug }) {
     } finally {
       if (publicRequestRef.current === requestId) setPublicLoading(false);
     }
-  }, [productSlug, reviewPage]);
+  }, [productSlug, reviewPage, selectedRating]);
 
   const loadMemberState = useCallback(async () => {
     if (!isAuthenticated || !token) {
@@ -148,7 +351,7 @@ export default function ProductReviews({ productSlug }) {
   }, [handleUnauthorized, isAuthenticated, productSlug, token]);
 
   useEffect(() => {
-    // oxlint-disable-next-line react/set-state-in-effect -- Load public Reviews for the current Product/page.
+    // oxlint-disable-next-line react/set-state-in-effect -- Load public Reviews for the current Product/filter/page.
     loadPublicReviews();
   }, [loadPublicReviews]);
 
@@ -158,11 +361,10 @@ export default function ProductReviews({ productSlug }) {
     loadMemberState();
   }, [isInitializing, loadMemberState]);
 
-  const refreshAfterMutation = async ({ resetPage = false } = {}) => {
-    const nextPage = resetPage ? 1 : reviewPage;
-    if (resetPage) setReviewPage(1);
+  const refreshAfterMutation = async () => {
+    setReviewPage(1);
     await Promise.all([
-      loadPublicReviews({ page: nextPage }),
+      loadPublicReviews({ page: 1, rating: selectedRating }),
       loadMemberState(),
     ]);
   };
@@ -181,7 +383,7 @@ export default function ProductReviews({ productSlug }) {
       }
 
       setEditorMode(null);
-      await refreshAfterMutation({ resetPage: wasCreating });
+      await refreshAfterMutation();
       setActionTone('success');
       setActionMessage(wasCreating ? 'Đánh giá của bạn đã được ghi nhận.' : 'Đánh giá của bạn đã được cập nhật.');
     } catch (error) {
@@ -191,7 +393,7 @@ export default function ProductReviews({ productSlug }) {
         setEditorMode(null);
         setActionTone('warning');
         setActionMessage('Bạn đã đánh giá sản phẩm này.');
-        await refreshAfterMutation({ resetPage: true });
+        await refreshAfterMutation();
       } else if (error.code === 'REVIEW_NOT_ELIGIBLE') {
         setEditorMode(null);
         setActionTone('warning');
@@ -206,225 +408,212 @@ export default function ProductReviews({ productSlug }) {
     }
   };
 
+  const handleRatingFilter = (rating) => {
+    setSelectedRating((current) => (current === rating ? null : rating));
+    setReviewPage(1);
+    setPublicError('');
+  };
+
+  const resetFilter = () => {
+    setSelectedRating(null);
+    setReviewPage(1);
+    setPublicError('');
+  };
+
+  const summary = publicData?.summary;
   const pagination = publicData?.pagination;
   const reviews = publicData?.reviews ?? [];
+  const hasReviewsOverall = (summary?.reviewCount ?? 0) > 0;
 
   return (
-    <section aria-labelledby="product-reviews-title" className="mt-14 border-t border-[#cfcfc8] pt-8 sm:mt-18 sm:pt-10 lg:mt-24 lg:pt-12">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-[10px] font-extrabold uppercase tracking-[0.24em] text-[#991b1b]">
-            Member voices
-          </p>
-          <h2 id="product-reviews-title" className="mt-2 text-2xl font-black uppercase tracking-tight sm:text-3xl">
-            Đánh giá sản phẩm
-          </h2>
-        </div>
-        {publicData?.summary?.reviewCount > 0 && (
-          <p className="text-xs font-bold text-[#737373]">
-            Ý kiến từ khách hàng đã mua sản phẩm
-          </p>
-        )}
-      </div>
+    <section
+      aria-labelledby="product-reviews-title"
+      className="mt-14 border-t border-[#bfbfb8] pt-9 sm:mt-18 sm:pt-11 lg:mt-24 lg:pt-14"
+    >
+      <header>
+        <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#991b1b]">
+          Khách hàng nói gì
+        </p>
+        <h2
+          id="product-reviews-title"
+          className="mt-2 text-2xl font-black uppercase tracking-[-0.025em] text-[#121212] sm:text-3xl"
+        >
+          Đánh giá &amp; nhận xét
+        </h2>
+      </header>
 
-      <div className="mt-7 grid border-y border-[#d4d4ce] lg:grid-cols-[minmax(230px,0.72fr)_minmax(0,1.28fr)]">
-        <div className="border-b border-[#d4d4ce] bg-white p-5 sm:p-7 lg:border-r lg:border-b-0 lg:p-8">
+      <div className="mt-7 grid border-y border-[#bfbfb8] bg-white lg:grid-cols-3">
+        <aside className="border-b border-[#bfbfb8] p-5 sm:p-7 lg:col-span-1 lg:border-r lg:border-b-0 lg:p-8 xl:p-9">
           {publicLoading && !publicData ? (
             <div role="status" className="animate-pulse">
               <span className="sr-only">Đang tải tổng quan đánh giá...</span>
-              <div className="h-9 w-28 bg-[#eeeeea]" />
+              <div className="h-11 w-28 bg-[#eeeeea]" />
               <div className="mt-4 h-4 w-36 bg-[#eeeeea]" />
+              <div className="mt-8 space-y-3">
+                {RATING_FILTERS.map((rating) => <div key={rating} className="h-5 bg-[#eeeeea]" />)}
+              </div>
             </div>
           ) : publicError && !publicData ? (
-            <p className="text-sm font-bold text-[#737373]">Chưa thể tải tổng quan đánh giá.</p>
+            <p className="text-sm font-bold text-[#73736e]">Chưa thể tải tổng quan đánh giá.</p>
           ) : (
-            <Summary summary={publicData?.summary} />
+            <>
+              <Summary summary={summary} />
+              <RatingDistribution
+                summary={summary}
+                selectedRating={selectedRating}
+                onSelect={handleRatingFilter}
+              />
+            </>
           )}
-        </div>
 
-        <div className="bg-[#f3f3f0] p-5 sm:p-7 lg:p-8">
-          <div aria-live="polite">
-            {actionMessage && (
-              <p
-                role={actionTone === 'error' ? 'alert' : 'status'}
-                className={`mb-5 border p-3 text-xs font-bold ${
-                  actionTone === 'success'
-                    ? 'border-[#bbf7d0] bg-[#f0fdf4] text-[#166534]'
-                    : actionTone === 'warning'
-                      ? 'border-[#fde68a] bg-[#fffbeb] text-[#92400e]'
-                      : 'border-[#fecaca] bg-[#fef2f2] text-[#991b1b]'
-                }`}
-              >
-                {actionMessage}
-              </p>
-            )}
+          <div className="mt-8 border-t border-[#bfbfb8] pt-7">
+            <div aria-live="polite">
+              {actionMessage && (
+                <p
+                  role={actionTone === 'error' ? 'alert' : 'status'}
+                  className={`mb-6 border p-3 text-xs font-bold leading-5 ${
+                    actionTone === 'success'
+                      ? 'border-[#121212] bg-white text-[#121212]'
+                      : 'border-[#991b1b] bg-[#fff5f5] text-[#7f1d1d]'
+                  }`}
+                >
+                  {actionMessage}
+                </p>
+              )}
+            </div>
+            <MemberReviewPanel
+              isAuthenticated={isAuthenticated}
+              isInitializing={isInitializing}
+              memberLoading={memberLoading}
+              memberError={memberError}
+              memberState={memberState}
+              editorMode={editorMode}
+              isSubmitting={isSubmitting}
+              onRetry={loadMemberState}
+              onEdit={() => {
+                setEditorMode('edit');
+                setActionMessage('');
+              }}
+              onCreate={() => {
+                setEditorMode('create');
+                setActionMessage('');
+              }}
+              onCancelEditor={() => setEditorMode(null)}
+              onSubmit={handleSubmit}
+            />
           </div>
+        </aside>
 
-          {isInitializing || memberLoading ? (
-            <p role="status" className="text-xs font-semibold text-[#737373]">Đang tải trạng thái đánh giá...</p>
-          ) : memberError ? (
-            <div>
-              <p role="alert" className="text-xs font-semibold text-[#991b1b]">{memberError}</p>
+        <div className="min-w-0 p-5 sm:p-7 lg:col-span-2 lg:p-8 xl:p-10">
+          {hasReviewsOverall && (
+            <div className="flex min-h-11 flex-col gap-3 border-b border-[#bfbfb8] pb-5 sm:flex-row sm:items-center sm:justify-between">
+              {selectedRating === null ? (
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#121212]">
+                    Tất cả đánh giá
+                  </p>
+                  <p className="mt-1 text-xs text-[#73736e]">{summary.reviewCount} đánh giá</p>
+                </div>
+              ) : (
+                <p className="text-xs font-black uppercase tracking-[0.12em] text-[#991b1b]" aria-live="polite">
+                  Đang xem: {selectedRating} sao · {pagination?.totalItems ?? 0} đánh giá
+                </p>
+              )}
+              {selectedRating !== null && (
+                <button
+                  type="button"
+                  onClick={resetFilter}
+                  className="min-h-11 self-start border-b border-[#991b1b] text-[10px] font-black uppercase tracking-[0.16em] text-[#991b1b] hover:border-[#121212] hover:text-[#121212] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#991b1b] sm:self-auto"
+                >
+                  Xóa bộ lọc
+                </button>
+              )}
+            </div>
+          )}
+
+          {publicLoading ? (
+            <div role="status" className="py-10">
+              <p className="text-xs font-semibold text-[#73736e]">Đang tải đánh giá...</p>
+              <div className="mt-5 animate-pulse space-y-5">
+                <div className="h-20 bg-[#f1f1ed]" />
+                <div className="h-20 bg-[#f1f1ed]" />
+              </div>
+            </div>
+          ) : publicError ? (
+            <div className="py-10">
+              <p role="alert" className="text-sm font-bold text-[#991b1b]">{publicError}</p>
               <button
                 type="button"
-                onClick={loadMemberState}
-                className="mt-4 min-h-11 border border-[#121212] px-5 text-xs font-extrabold uppercase tracking-wider hover:bg-[#121212] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#991b1b]"
+                onClick={() => loadPublicReviews()}
+                className="mt-5 min-h-11 bg-[#121212] px-5 text-xs font-extrabold uppercase tracking-wider text-white hover:bg-[#991b1b] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#991b1b]"
               >
                 Thử lại
               </button>
             </div>
-          ) : !isAuthenticated ? (
-            <div>
-              <h3 className="text-sm font-black uppercase tracking-wide">Chia sẻ trải nghiệm của bạn</h3>
-              <p className="mt-2 max-w-2xl text-xs leading-5 text-[#525252]">
-                Đăng nhập và hoàn tất đơn hàng có sản phẩm này để có thể đánh giá.
+          ) : selectedRating !== null && reviews.length === 0 ? (
+            <div className="border-b border-[#d4d4ce] py-10">
+              <p className="text-sm font-bold text-[#292927]">
+                Chưa có đánh giá {selectedRating} sao.
               </p>
-              <Link
-                to="/login"
-                className="mt-5 inline-flex min-h-11 items-center bg-[#121212] px-6 text-xs font-extrabold uppercase tracking-wider text-white hover:bg-[#991b1b] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#991b1b]"
+              <button
+                type="button"
+                onClick={resetFilter}
+                className="mt-5 min-h-11 border border-[#121212] px-5 text-xs font-extrabold uppercase tracking-wider hover:bg-[#121212] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#991b1b]"
               >
-                Đăng nhập
-              </Link>
+                Xóa bộ lọc
+              </button>
             </div>
-          ) : memberState?.ownReview ? (
-            <div>
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <h3 className="text-sm font-black uppercase tracking-wide">Đánh giá của bạn</h3>
-                  <div className="mt-3"><ReviewRating rating={memberState.ownReview.rating} /></div>
-                  <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-[#404040]">
-                    {memberState.ownReview.comment}
-                  </p>
-                </div>
-                {editorMode !== 'edit' && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditorMode('edit');
-                      setActionMessage('');
-                    }}
-                    className="min-h-11 shrink-0 border border-[#121212] px-5 text-xs font-extrabold uppercase tracking-wider hover:bg-[#121212] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#991b1b]"
-                  >
-                    Chỉnh sửa đánh giá
-                  </button>
-                )}
-              </div>
-              {editorMode === 'edit' && (
-                <div className="mt-5">
-                  <ReviewForm
-                    initialReview={memberState.ownReview}
-                    isSubmitting={isSubmitting}
-                    onCancel={() => setEditorMode(null)}
-                    onSubmit={handleSubmit}
-                  />
-                </div>
-              )}
-            </div>
-          ) : memberState?.eligible ? (
-            <div>
-              <h3 className="text-sm font-black uppercase tracking-wide">Sản phẩm đã đồng hành cùng bạn?</h3>
-              <p className="mt-2 text-xs leading-5 text-[#525252]">Chia sẻ đánh giá để giúp cộng đồng STEP/LAB lựa chọn dễ dàng hơn.</p>
-              {editorMode === 'create' ? (
-                <div className="mt-5">
-                  <ReviewForm
-                    isSubmitting={isSubmitting}
-                    onCancel={() => setEditorMode(null)}
-                    onSubmit={handleSubmit}
-                  />
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditorMode('create');
-                    setActionMessage('');
-                  }}
-                  className="mt-5 min-h-11 bg-[#121212] px-6 text-xs font-extrabold uppercase tracking-wider text-white hover:bg-[#991b1b] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#991b1b]"
-                >
-                  Viết đánh giá
-                </button>
-              )}
-            </div>
-          ) : (
-            <div>
-              <h3 className="text-sm font-black uppercase tracking-wide">Đánh giá từ đơn hàng hoàn tất</h3>
-              <p className="mt-2 text-xs leading-5 text-[#525252]">
-                Bạn có thể đánh giá sản phẩm sau khi đơn hàng hoàn tất.
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="mt-8">
-        {publicLoading && publicData ? (
-          <p role="status" className="border-y border-[#e5e5e0] py-6 text-xs font-semibold text-[#737373]">
-            Đang cập nhật đánh giá...
-          </p>
-        ) : publicError ? (
-          <div className="border border-[#fecaca] bg-white p-5 sm:p-6">
-            <p role="alert" className="text-sm font-bold text-[#991b1b]">{publicError}</p>
-            <button
-              type="button"
-              onClick={() => loadPublicReviews()}
-              className="mt-4 min-h-11 bg-[#121212] px-5 text-xs font-extrabold uppercase tracking-wider text-white hover:bg-[#991b1b] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#991b1b]"
-            >
-              Thử lại
-            </button>
-          </div>
-        ) : reviews.length === 0 ? (
-          <p className="border-y border-[#e5e5e0] py-8 text-sm text-[#737373]">
-            Chưa có đánh giá nào cho sản phẩm này.
-          </p>
-        ) : (
-          <ul className="divide-y divide-[#d4d4ce] border-y border-[#d4d4ce]" aria-label="Danh sách đánh giá sản phẩm">
-            {reviews.map((review, index) => (
-              <li key={`${review.createdAt}-${review.member.displayName}-${index}`}>
-                <article className="grid gap-4 py-6 sm:grid-cols-[minmax(150px,0.35fr)_minmax(0,1fr)] sm:py-7">
-                  <header>
-                    <h3 className="text-sm font-black text-[#121212]">{review.member.displayName}</h3>
-                    <p className="mt-2 text-[11px] text-[#737373]">
-                      <time dateTime={review.createdAt}>{formatReviewDate(review.createdAt)}</time>
-                      {wasMeaningfullyEdited(review) && <span> · Đã chỉnh sửa</span>}
-                    </p>
-                  </header>
-                  <div>
-                    <ReviewRating rating={review.rating} compact />
-                    <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-[#404040]">
+          ) : reviews.length > 0 ? (
+            <ul className="divide-y divide-[#d4d4ce]" aria-label="Danh sách đánh giá sản phẩm">
+              {reviews.map((review, index) => (
+                <li key={`${review.createdAt}-${review.member.displayName}-${index}`}>
+                  <article className="py-7 sm:py-8">
+                    <header className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-5">
+                      <h3 className="text-sm font-black text-[#121212]">{review.member.displayName}</h3>
+                      <p className="shrink-0 text-[11px] text-[#73736e]">
+                        <time dateTime={review.createdAt}>{formatReviewDate(review.createdAt)}</time>
+                        {wasMeaningfullyEdited(review) && <span> · Đã chỉnh sửa</span>}
+                      </p>
+                    </header>
+                    <div className="mt-3"><ReviewRating rating={review.rating} compact /></div>
+                    <p className="mt-4 max-w-3xl whitespace-pre-wrap break-words text-sm leading-6 text-[#333330]">
                       {review.comment}
                     </p>
-                  </div>
-                </article>
-              </li>
-            ))}
-          </ul>
-        )}
+                  </article>
+                </li>
+              ))}
+            </ul>
+          ) : null}
 
-        {!publicError && pagination?.totalPages > 1 && (
-          <nav aria-label="Phân trang đánh giá" className="mt-6 flex items-center justify-between gap-4 border-t border-[#e5e5e0] pt-5">
-            <button
-              type="button"
-              disabled={publicLoading || pagination.page <= 1}
-              onClick={() => setReviewPage((page) => Math.max(1, page - 1))}
-              className="min-h-11 border border-[#d4d4ce] px-5 text-xs font-extrabold uppercase tracking-wider hover:border-[#121212] disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#991b1b]"
-              aria-label="Trang đánh giá trước"
+          {!publicError && pagination?.totalPages > 1 && (
+            <nav
+              aria-label="Phân trang đánh giá"
+              className="mt-2 flex items-center justify-between gap-4 border-t border-[#bfbfb8] pt-6"
             >
-              Trước
-            </button>
-            <span className="text-xs font-bold text-[#525252]" aria-live="polite">
-              Trang {pagination.page} / {pagination.totalPages}
-            </span>
-            <button
-              type="button"
-              disabled={publicLoading || pagination.page >= pagination.totalPages}
-              onClick={() => setReviewPage((page) => page + 1)}
-              className="min-h-11 border border-[#d4d4ce] px-5 text-xs font-extrabold uppercase tracking-wider hover:border-[#121212] disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#991b1b]"
-              aria-label="Trang đánh giá tiếp theo"
-            >
-              Tiếp
-            </button>
-          </nav>
-        )}
+              <button
+                type="button"
+                disabled={publicLoading || pagination.page <= 1}
+                onClick={() => setReviewPage((page) => Math.max(1, page - 1))}
+                className="min-h-11 border border-[#121212] px-4 text-[10px] font-black uppercase tracking-[0.14em] hover:bg-[#121212] hover:text-white disabled:cursor-not-allowed disabled:border-[#d4d4ce] disabled:text-[#9b9b95] disabled:hover:bg-transparent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#991b1b] sm:px-5"
+                aria-label="Trang đánh giá trước"
+              >
+                Trước
+              </button>
+              <span className="text-xs font-bold text-[#52524e]" aria-live="polite">
+                Trang {pagination.page} / {pagination.totalPages}
+              </span>
+              <button
+                type="button"
+                disabled={publicLoading || pagination.page >= pagination.totalPages}
+                onClick={() => setReviewPage((page) => page + 1)}
+                className="min-h-11 border border-[#121212] px-4 text-[10px] font-black uppercase tracking-[0.14em] hover:bg-[#121212] hover:text-white disabled:cursor-not-allowed disabled:border-[#d4d4ce] disabled:text-[#9b9b95] disabled:hover:bg-transparent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#991b1b] sm:px-5"
+                aria-label="Trang đánh giá tiếp theo"
+              >
+                Tiếp
+              </button>
+            </nav>
+          )}
+        </div>
       </div>
     </section>
   );

@@ -31,11 +31,12 @@ async function reviewRequest(path, { method = 'GET', token, body } = {}) {
   return data?.data;
 }
 
-export function getProductReviews(slug, { page = 1, limit = 10 } = {}) {
+export function getProductReviews(slug, { page = 1, limit = 10, rating = null } = {}) {
   const query = new URLSearchParams({
     page: String(page),
     limit: String(limit),
   });
+  if (rating !== null) query.set('rating', String(rating));
   return reviewRequest(`/products/${encodeURIComponent(slug)}/reviews?${query}`);
 }
 

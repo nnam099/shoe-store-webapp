@@ -18,6 +18,8 @@ export default function ReviewForm({ initialReview, isSubmitting, onCancel, onSu
     comment: initialReview?.comment ?? '',
   });
   const [errors, setErrors] = useState({});
+  const [previewRating, setPreviewRating] = useState(null);
+  const displayedRating = previewRating ?? values.rating;
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -31,14 +33,24 @@ export default function ReviewForm({ initialReview, isSubmitting, onCancel, onSu
   };
 
   return (
-    <form className="border-t border-[#d4d4ce] pt-5" onSubmit={handleSubmit} noValidate>
+    <form className="border-t border-[#d4d4ce] pt-6" onSubmit={handleSubmit} noValidate>
       <fieldset aria-describedby={errors.rating ? `${formId}-rating-error` : undefined}>
-        <legend className="text-[11px] font-extrabold uppercase tracking-wider text-[#121212]">
+        <legend className="text-[10px] font-black uppercase tracking-[0.18em] text-[#121212]">
           Mức đánh giá
         </legend>
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div
+          className="mt-3 flex flex-wrap gap-1 sm:gap-2"
+          onPointerLeave={() => setPreviewRating(null)}
+          onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget)) setPreviewRating(null);
+          }}
+        >
           {[1, 2, 3, 4, 5].map((rating) => (
-            <label key={rating} className="relative cursor-pointer">
+            <label
+              key={rating}
+              className="relative cursor-pointer"
+              onPointerEnter={() => setPreviewRating(rating)}
+            >
               <input
                 type="radio"
                 name={`${formId}-rating`}
@@ -49,10 +61,17 @@ export default function ReviewForm({ initialReview, isSubmitting, onCancel, onSu
                   setValues((current) => ({ ...current, rating }));
                   setErrors((current) => ({ ...current, rating: '' }));
                 }}
+                onFocus={() => setPreviewRating(rating)}
                 className="peer sr-only"
                 aria-label={`${rating} trên 5 sao`}
               />
-              <span className="flex size-11 items-center justify-center border border-[#d4d4ce] bg-white text-lg text-[#a3a3a3] transition-colors peer-checked:border-[#991b1b] peer-checked:bg-[#991b1b] peer-checked:text-white peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#991b1b] peer-disabled:cursor-not-allowed peer-disabled:opacity-50">
+              <span
+                className={`flex size-11 items-center justify-center border bg-white text-xl transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[#991b1b] peer-disabled:cursor-not-allowed peer-disabled:opacity-50 ${
+                  rating <= displayedRating
+                    ? 'border-[#991b1b] text-[#991b1b]'
+                    : 'border-[#d4d4ce] text-[#c7c7c1] hover:border-[#991b1b]'
+                }`}
+              >
                 <span aria-hidden="true">★</span>
               </span>
             </label>
@@ -68,7 +87,7 @@ export default function ReviewForm({ initialReview, isSubmitting, onCancel, onSu
       <div className="mt-5">
         <label
           htmlFor={`${formId}-comment`}
-          className="text-[11px] font-extrabold uppercase tracking-wider text-[#121212]"
+          className="text-[10px] font-black uppercase tracking-[0.18em] text-[#121212]"
         >
           Nội dung đánh giá
         </label>
@@ -83,7 +102,7 @@ export default function ReviewForm({ initialReview, isSubmitting, onCancel, onSu
             setValues((current) => ({ ...current, comment: event.target.value }));
             setErrors((current) => ({ ...current, comment: '' }));
           }}
-          className="mt-3 w-full resize-y border border-[#d4d4ce] bg-white px-4 py-3 text-sm leading-6 text-[#121212] outline-none transition-colors placeholder:text-[#a3a3a3] focus:border-[#121212] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#991b1b] disabled:cursor-not-allowed disabled:bg-[#f5f5f3]"
+          className="mt-3 w-full resize-y border border-[#bfbfb8] bg-white px-4 py-3 text-sm leading-6 text-[#121212] outline-none transition-colors placeholder:text-[#92928c] focus:border-[#991b1b] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#991b1b] disabled:cursor-not-allowed disabled:bg-[#f5f5f3]"
           placeholder="Chia sẻ trải nghiệm của bạn về sản phẩm..."
         />
         {errors.comment && (
@@ -98,14 +117,14 @@ export default function ReviewForm({ initialReview, isSubmitting, onCancel, onSu
           type="button"
           disabled={isSubmitting}
           onClick={onCancel}
-          className="min-h-11 border border-[#d4d4ce] px-5 text-xs font-extrabold uppercase tracking-wider text-[#525252] hover:border-[#121212] hover:text-[#121212] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#991b1b] disabled:cursor-not-allowed disabled:opacity-50"
+          className="min-h-11 border border-[#121212] bg-white px-5 text-xs font-extrabold uppercase tracking-wider text-[#121212] hover:bg-[#121212] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#991b1b] disabled:cursor-not-allowed disabled:opacity-50"
         >
           Quay lại
         </button>
         <button
           type="submit"
           disabled={isSubmitting}
-          className="min-h-11 bg-[#121212] px-6 text-xs font-extrabold uppercase tracking-wider text-white hover:bg-[#991b1b] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#991b1b] disabled:cursor-not-allowed disabled:opacity-50"
+          className="min-h-11 bg-[#991b1b] px-6 text-xs font-extrabold uppercase tracking-wider text-white hover:bg-[#7f1d1d] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#991b1b] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isSubmitting ? 'Đang lưu...' : initialReview ? 'Lưu chỉnh sửa' : 'Gửi đánh giá'}
         </button>
