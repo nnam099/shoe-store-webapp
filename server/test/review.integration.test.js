@@ -11,6 +11,7 @@ const TEST_EMAILS = [
   'm9a.review.b@example.test',
   'm9a.review.status@example.test',
   'm9a.review.multiple@example.test',
+  'm9a.review.analytics@example.test',
 ];
 const TEST_PHONE = '0900000901';
 const TEST_PASSWORD = 'member-pass-9a';
@@ -25,13 +26,14 @@ let originalCatalogState;
 let orderSequence = 0;
 
 async function counts() {
-  const [users, orders, orderItems, reviews] = await Promise.all([
+  const [users, orders, orderItems, orderStatusHistories, reviews] = await Promise.all([
     prisma.user.count(),
     prisma.order.count(),
     prisma.orderItem.count(),
+    prisma.orderStatusHistory.count(),
     prisma.review.count(),
   ]);
-  return { users, orders, orderItems, reviews };
+  return { users, orders, orderItems, orderStatusHistories, reviews };
 }
 
 async function api(path, { method = 'GET', token, body } = {}) {
@@ -120,6 +122,7 @@ before(async () => {
   )), 'running database must enforce one Review per Product and User');
 
   products = await prisma.product.findMany({
+    where: { reviews: { none: {} } },
     orderBy: { id: 'asc' },
     take: 3,
     include: {
@@ -190,7 +193,7 @@ after(async () => {
 });
 
 test('Milestone 9A Review backend and eligibility', async (t) => {
-  const [memberA, memberB, statusMember, multipleMember] = members;
+  const [memberA, memberB, statusMember, multipleMember, analyticsMember] = members;
   const [productA, productB, productC] = products;
   const variantA = productA.colorways[0].variants[0];
   const variantB = productB.colorways[0].variants[0];
@@ -472,7 +475,11 @@ test('Milestone 9A Review backend and eligibility', async (t) => {
   await t.test('public list returns summary, deterministic pagination, and no internal IDs or PII', async () => {
     const publicList = await api(`/api/products/${productA.slug}/reviews?page=1&limit=1`);
     assert.equal(publicList.status, 200);
-    assert.deepEqual(publicList.body.data.summary, { averageRating: 4.5, reviewCount: 2 });
+    assert.deepEqual(publicList.body.data.summary, {
+      averageRating: 4.5,
+      reviewCount: 2,
+      distribution: { 5: 1, 4: 1, 3: 0, 2: 0, 1: 0 },
+    });
     assert.deepEqual(publicList.body.data.pagination, {
       page: 1, limit: 1, totalItems: 2, totalPages: 2,
     });
@@ -488,7 +495,11 @@ test('Milestone 9A Review backend and eligibility', async (t) => {
     assert.equal(secondPage.body.data.reviews[0].member.displayName, 'M9A Member 1');
 
     const noReviews = await api(`/api/products/${productC.slug}/reviews`);
-    assert.deepEqual(noReviews.body.data.summary, { averageRating: null, reviewCount: 0 });
+    assert.deepEqual(noReviews.body.data.summary, {
+      averageRating: null,
+      reviewCount: 0,
+      distribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 },
+    });
     assert.deepEqual(noReviews.body.data.reviews, []);
 
     for (const query of ['page=0', 'page=x', 'limit=0', 'limit=51']) {
@@ -556,6 +567,96 @@ test('Milestone 9A Review backend and eligibility', async (t) => {
     }
   });
 
+  await t.test('public analytics remain global while rating filters control list pagination', async () => {
+    const analyticsUsers = [memberA, memberB, statusMember, multipleMember];
+    const seedRatings = [5, 5, 4, 4];
+    const seededReviews = [];
+    for (let index = 0; index < analyticsUsers.length; index += 1) {
+      seededReviews.push(await prisma.review.create({
+        data: {
+          productId: productC.id,
+          userId: analyticsUsers[index].id,
+          rating: seedRatings[index],
+          comment: `Analytics review ${index + 1}`,
+          createdAt: new Date(`2026-01-0${index + 1}T00:00:00.000Z`),
+          updatedAt: new Date(`2026-01-0${index + 1}T00:00:00.000Z`),
+        },
+      }));
+    }
+
+    const beforeNewReview = await api(`/api/products/${productC.slug}/reviews`);
+    assert.deepEqual(beforeNewReview.body.data.summary, {
+      averageRating: 4.5,
+      reviewCount: 4,
+      distribution: { 5: 2, 4: 2, 3: 0, 2: 0, 1: 0 },
+    });
+
+    await createTestOrder({
+      memberId: analyticsMember.id,
+      product: productC,
+      variant: variantC,
+      status: 'COMPLETED',
+    });
+    const analyticsToken = issueMemberToken(analyticsMember);
+    const created = await api(`/api/products/${productC.slug}/reviews`, {
+      method: 'POST',
+      token: analyticsToken,
+      body: { rating: 3, comment: 'Analytics review 5' },
+    });
+    assert.equal(created.status, 201);
+
+    const allReviews = await api(`/api/products/${productC.slug}/reviews`);
+    const expectedSummary = {
+      averageRating: 4.2,
+      reviewCount: 5,
+      distribution: { 5: 2, 4: 2, 3: 1, 2: 0, 1: 0 },
+    };
+    assert.deepEqual(allReviews.body.data.summary, expectedSummary);
+
+    const expectedFilteredTotals = new Map([[5, 2], [4, 2], [3, 1], [2, 0], [1, 0]]);
+    for (const [rating, totalItems] of expectedFilteredTotals) {
+      const filtered = await api(
+        `/api/products/${productC.slug}/reviews?rating=${rating}&page=1&limit=1`
+      );
+      assert.equal(filtered.status, 200);
+      assert.deepEqual(filtered.body.data.summary, expectedSummary);
+      assert.equal(filtered.body.data.pagination.totalItems, totalItems);
+      assert.equal(filtered.body.data.pagination.totalPages, Math.ceil(totalItems / 1));
+      assert.equal(filtered.body.data.reviews.length, Math.min(totalItems, 1));
+      assert.ok(filtered.body.data.reviews.every((review) => review.rating === rating));
+    }
+
+    const ratingFiveFirst = await api(
+      `/api/products/${productC.slug}/reviews?rating=5&page=1&limit=1`
+    );
+    const ratingFiveSecond = await api(
+      `/api/products/${productC.slug}/reviews?rating=5&page=2&limit=1`
+    );
+    assert.equal(ratingFiveFirst.body.data.reviews[0].comment, 'Analytics review 2');
+    assert.equal(ratingFiveSecond.body.data.reviews[0].comment, 'Analytics review 1');
+
+    for (const rating of ['0', '6', '1.5', 'abc', '', '5&rating=4']) {
+      const invalid = await api(`/api/products/${productC.slug}/reviews?rating=${rating}`);
+      assert.equal(invalid.status, 400);
+      assert.equal(invalid.body.error.code, 'VALIDATION_ERROR');
+    }
+
+    const edited = await api(`/api/reviews/${seededReviews[0].id}`, {
+      method: 'PATCH',
+      token: tokenA,
+      body: { rating: 4 },
+    });
+    assert.equal(edited.status, 200);
+    const afterEdit = await api(`/api/products/${productC.slug}/reviews?rating=5`);
+    assert.deepEqual(afterEdit.body.data.summary, {
+      averageRating: 4,
+      reviewCount: 5,
+      distribution: { 5: 1, 4: 3, 3: 1, 2: 0, 1: 0 },
+    });
+    assert.equal(afterEdit.body.data.pagination.totalItems, 1);
+    assert.equal(afterEdit.body.data.reviews.length, 1);
+  });
+
   await t.test('database rejects an out-of-range rating independently of API validation', async () => {
     await assert.rejects(
       prisma.review.create({
@@ -568,7 +669,7 @@ test('Milestone 9A Review backend and eligibility', async (t) => {
       })
     );
     assert.equal(await prisma.review.count({
-      where: { productId: productC.id, userId: statusMember.id },
+      where: { productId: productC.id, userId: statusMember.id, rating: 6 },
     }), 0);
   });
 });

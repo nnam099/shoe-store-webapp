@@ -46,6 +46,20 @@ export function parseReviewPagination(query = {}) {
   };
 }
 
+function parseRatingFilter(value) {
+  if (value === undefined) return null;
+  if (typeof value !== 'string' || !/^[1-5]$/.test(value)) {
+    throw validationError('rating must be an integer between 1 and 5');
+  }
+  return Number(value);
+}
+
+function buildRatingDistribution(groups) {
+  const distribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+  for (const group of groups) distribution[group.rating] = group._count._all;
+  return distribution;
+}
+
 function normalizeProductSlug(slug) {
   if (typeof slug !== 'string') throw productNotFoundError();
   const normalized = slug.trim().toLowerCase();
@@ -186,11 +200,14 @@ async function hasCompletedPurchase(memberId, productId, dbClient = prisma) {
 export async function listPublicReviews(slug, rawQuery) {
   const product = await resolveProduct(slug);
   const { page, limit } = parseReviewPagination(rawQuery);
+  const rating = parseRatingFilter(rawQuery?.rating);
   const skip = (page - 1) * limit;
+  const productWhere = { productId: product.id };
+  const listWhere = rating === null ? productWhere : { ...productWhere, rating };
 
-  const [reviews, aggregate] = await Promise.all([
+  const [reviews, filteredCount, aggregate, ratingGroups] = await Promise.all([
     prisma.review.findMany({
-      where: { productId: product.id },
+      where: listWhere,
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       skip,
       take: limit,
@@ -202,18 +219,26 @@ export async function listPublicReviews(slug, rawQuery) {
         user: { select: { fullName: true } },
       },
     }),
+    rating === null ? null : prisma.review.count({ where: listWhere }),
     prisma.review.aggregate({
-      where: { productId: product.id },
+      where: productWhere,
       _avg: { rating: true },
+      _count: { _all: true },
+    }),
+    prisma.review.groupBy({
+      by: ['rating'],
+      where: productWhere,
       _count: { _all: true },
     }),
   ]);
 
-  const totalItems = aggregate._count._all;
+  const reviewCount = aggregate._count._all;
+  const totalItems = filteredCount ?? reviewCount;
   return {
     summary: {
       averageRating: aggregate._avg.rating,
-      reviewCount: totalItems,
+      reviewCount,
+      distribution: buildRatingDistribution(ratingGroups),
     },
     reviews: reviews.map(serializePublicReview),
     pagination: {
