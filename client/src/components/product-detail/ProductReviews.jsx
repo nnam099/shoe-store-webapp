@@ -75,7 +75,7 @@ function RatingDistribution({ summary, selectedRating, onSelect }) {
       <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#121212]">
         Phân bố đánh giá
       </p>
-      <div className="mt-4 space-y-1.5">
+      <div className="mt-4 border-y border-[#deded8]">
         {RATING_FILTERS.map((rating) => {
           const count = summary.distribution?.[rating] ?? 0;
           const percentage = summary.reviewCount > 0
@@ -84,40 +84,47 @@ function RatingDistribution({ summary, selectedRating, onSelect }) {
           const active = selectedRating === rating;
 
           return (
-            <button
-              key={rating}
-              type="button"
-              aria-label={`Lọc đánh giá ${rating} sao, ${count} đánh giá`}
-              aria-pressed={active}
-              onClick={() => onSelect(rating)}
-              className={`group flex min-h-11 w-full items-center gap-3 border px-2 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#991b1b] ${
-                active
-                  ? 'border-[#991b1b] bg-[#fff5f5]'
-                  : 'border-transparent hover:border-[#d4d4ce] hover:bg-[#fafaf8]'
-              }`}
-            >
-              <span className={`w-9 shrink-0 text-xs font-black ${active ? 'text-[#991b1b]' : 'text-[#292927]'}`}>
-                {rating}★
-              </span>
-              <span
-                role="progressbar"
-                aria-label={`${percentage.toFixed(0)} phần trăm đánh giá ${rating} sao`}
-                aria-valuemin="0"
-                aria-valuemax={summary.reviewCount}
-                aria-valuenow={count}
-                className="h-1.5 min-w-0 flex-1 overflow-hidden bg-[#e6e6e0]"
+            <div key={rating} className="border-b border-[#ecece7] last:border-b-0">
+              <button
+                type="button"
+                aria-label={`Lọc đánh giá ${rating} sao, ${count} đánh giá`}
+                aria-pressed={active}
+                onClick={() => onSelect(rating)}
+                className={`group relative flex min-h-12 w-full items-center gap-3 border-0 px-3 text-left transition-colors focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#991b1b] ${
+                  active
+                    ? 'bg-[#fff5f5]'
+                    : 'bg-white hover:bg-[#fafaf8]'
+                }`}
               >
                 <span
-                  className={`block h-full transition-[width] duration-300 ${
-                    active ? 'bg-[#7f1d1d]' : 'bg-[#991b1b]'
+                  aria-hidden="true"
+                  className={`absolute inset-y-2 left-0 w-0.5 transition-colors ${
+                    active ? 'bg-[#991b1b]' : 'bg-transparent group-hover:bg-[#d9a3a3]'
                   }`}
-                  style={{ width: `${percentage}%` }}
                 />
-              </span>
-              <span className={`w-6 shrink-0 text-right text-xs font-bold ${active ? 'text-[#991b1b]' : 'text-[#73736e]'}`}>
-                {count}
-              </span>
-            </button>
+                <span className={`w-9 shrink-0 text-xs font-black ${active ? 'text-[#991b1b]' : 'text-[#292927]'}`}>
+                  {rating}★
+                </span>
+                <span
+                  role="progressbar"
+                  aria-label={`${percentage.toFixed(0)} phần trăm đánh giá ${rating} sao`}
+                  aria-valuemin="0"
+                  aria-valuemax={summary.reviewCount}
+                  aria-valuenow={count}
+                  className="h-1.5 min-w-0 flex-1 overflow-hidden bg-[#e6e6e0]"
+                >
+                  <span
+                    className={`block h-full transition-[width] duration-300 ${
+                      active ? 'bg-[#7f1d1d]' : 'bg-[#991b1b]'
+                    }`}
+                    style={{ width: `${percentage}%` }}
+                  />
+                </span>
+                <span className={`w-6 shrink-0 text-right text-xs font-bold ${active ? 'text-[#991b1b]' : 'text-[#73736e]'}`}>
+                  {count}
+                </span>
+              </button>
+            </div>
           );
         })}
       </div>
@@ -442,8 +449,8 @@ export default function ProductReviews({ productSlug }) {
         </h2>
       </header>
 
-      <div className="mt-7 grid border-y border-[#bfbfb8] bg-white lg:grid-cols-3">
-        <aside className="border-b border-[#bfbfb8] p-5 sm:p-7 lg:col-span-1 lg:border-r lg:border-b-0 lg:p-8 xl:p-9">
+      <div className="mt-7 border-y border-[#bfbfb8] bg-white lg:flex">
+        <aside className="border-b border-[#bfbfb8] p-5 sm:p-7 lg:w-1/3 lg:shrink-0 lg:border-r lg:border-b-0 lg:p-8 xl:p-9">
           {publicLoading && !publicData ? (
             <div role="status" className="animate-pulse">
               <span className="sr-only">Đang tải tổng quan đánh giá...</span>
@@ -466,7 +473,7 @@ export default function ProductReviews({ productSlug }) {
             </>
           )}
 
-          <div className="mt-8 border-t border-[#bfbfb8] pt-7">
+          <div className="mt-8 border-t border-[#deded8] pt-7">
             <div aria-live="polite">
               {actionMessage && (
                 <p
@@ -504,7 +511,7 @@ export default function ProductReviews({ productSlug }) {
           </div>
         </aside>
 
-        <div className="min-w-0 p-5 sm:p-7 lg:col-span-2 lg:p-8 xl:p-10">
+        <div className="min-w-0 p-5 sm:p-7 lg:flex-1 lg:p-8 xl:p-10">
           {hasReviewsOverall && (
             <div className="flex min-h-11 flex-col gap-3 border-b border-[#bfbfb8] pb-5 sm:flex-row sm:items-center sm:justify-between">
               {selectedRating === null ? (
@@ -576,7 +583,7 @@ export default function ProductReviews({ productSlug }) {
                       </p>
                     </header>
                     <div className="mt-3"><ReviewRating rating={review.rating} compact /></div>
-                    <p className="mt-4 max-w-3xl whitespace-pre-wrap break-words text-sm leading-6 text-[#333330]">
+                    <p className="mt-4 max-w-[68ch] whitespace-pre-wrap break-words text-sm leading-6 text-[#333330]">
                       {review.comment}
                     </p>
                   </article>
