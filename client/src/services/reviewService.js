@@ -61,3 +61,16 @@ export function updateReview(token, reviewId, payload) {
     body: payload,
   });
 }
+
+export function getProductReviewSummaries(slugs) {
+  if (!slugs || slugs.length === 0) {
+    return Promise.resolve({ summaries: [] });
+  }
+  const slugList = Array.isArray(slugs) ? slugs : [slugs];
+  const uniqueSlugs = [...new Set(slugList.map((s) => (typeof s === 'string' ? s.trim() : '')).filter(Boolean))];
+  if (uniqueSlugs.length === 0) {
+    return Promise.resolve({ summaries: [] });
+  }
+  const query = encodeURIComponent(uniqueSlugs.join(','));
+  return reviewRequest(`/products/review-summaries?slugs=${query}`);
+}

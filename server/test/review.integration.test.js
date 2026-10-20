@@ -418,17 +418,93 @@ test('Milestone 9A Review backend and eligibility', async (t) => {
       data: { status: 'PENDING', completedAt: null },
     });
 
+    const ratingChangedBaseline = new Date('2020-01-01T00:00:00.000Z');
+    await prisma.review.update({
+      where: { id: memberAReviewId },
+      data: {
+        rating: 4,
+        comment: 'Tốt',
+        updatedAt: ratingChangedBaseline,
+      },
+    });
     const ratingOnly = await api(`/api/reviews/${memberAReviewId}`, {
-      method: 'PATCH', token: tokenA, body: { rating: 2 },
+      method: 'PATCH', token: tokenA, body: { rating: 5 },
     });
     assert.equal(ratingOnly.status, 200);
-    assert.equal(ratingOnly.body.data.rating, 2);
+    assert.equal(ratingOnly.body.data.rating, 5);
+    assert.equal(ratingOnly.body.data.comment, 'Tốt');
+    assert.notEqual(ratingOnly.body.data.updatedAt, ratingChangedBaseline.toISOString());
+    const storedRatingChange = await prisma.review.findUnique({
+      where: { id: memberAReviewId },
+    });
+    assert.equal(storedRatingChange.rating, 5);
+    assert.equal(storedRatingChange.comment, 'Tốt');
+    assert.notEqual(storedRatingChange.updatedAt.toISOString(), ratingChangedBaseline.toISOString());
 
+    const commentChangedBaseline = new Date('2020-01-02T00:00:00.000Z');
+    await prisma.review.update({
+      where: { id: memberAReviewId },
+      data: {
+        rating: 5,
+        comment: 'Tốt',
+        updatedAt: commentChangedBaseline,
+      },
+    });
     const commentOnly = await api(`/api/reviews/${memberAReviewId}`, {
-      method: 'PATCH', token: tokenA, body: { comment: '  Updated comment  ' },
+      method: 'PATCH', token: tokenA, body: { comment: '  Rất tốt  ' },
     });
     assert.equal(commentOnly.status, 200);
-    assert.equal(commentOnly.body.data.comment, 'Updated comment');
+    assert.equal(commentOnly.body.data.rating, 5);
+    assert.equal(commentOnly.body.data.comment, 'Rất tốt');
+    assert.notEqual(commentOnly.body.data.updatedAt, commentChangedBaseline.toISOString());
+    const storedCommentChange = await prisma.review.findUnique({
+      where: { id: memberAReviewId },
+    });
+    assert.equal(storedCommentChange.rating, 5);
+    assert.equal(storedCommentChange.comment, 'Rất tốt');
+    assert.notEqual(storedCommentChange.updatedAt.toISOString(), commentChangedBaseline.toISOString());
+
+    const noOpBaseline = new Date('2020-01-03T00:00:00.000Z');
+    await prisma.review.update({
+      where: { id: memberAReviewId },
+      data: {
+        rating: 5,
+        comment: 'Sản phẩm tốt',
+        updatedAt: noOpBaseline,
+      },
+    });
+    const exactNoOp = await api(`/api/reviews/${memberAReviewId}`, {
+      method: 'PATCH',
+      token: tokenA,
+      body: { rating: 5, comment: 'Sản phẩm tốt' },
+    });
+    assert.equal(exactNoOp.status, 200);
+    assert.equal(exactNoOp.body.data.rating, 5);
+    assert.equal(exactNoOp.body.data.comment, 'Sản phẩm tốt');
+    assert.equal(exactNoOp.body.data.updatedAt, noOpBaseline.toISOString());
+
+    const whitespaceNoOp = await api(`/api/reviews/${memberAReviewId}`, {
+      method: 'PATCH',
+      token: tokenA,
+      body: { comment: '   Sản phẩm tốt   ' },
+    });
+    assert.equal(whitespaceNoOp.status, 200);
+    assert.equal(whitespaceNoOp.body.data.comment, 'Sản phẩm tốt');
+    assert.equal(whitespaceNoOp.body.data.updatedAt, noOpBaseline.toISOString());
+
+    const partialNoOp = await api(`/api/reviews/${memberAReviewId}`, {
+      method: 'PATCH', token: tokenA, body: { rating: 5 },
+    });
+    assert.equal(partialNoOp.status, 200);
+    assert.equal(partialNoOp.body.data.rating, 5);
+    assert.equal(partialNoOp.body.data.comment, 'Sản phẩm tốt');
+    assert.equal(partialNoOp.body.data.updatedAt, noOpBaseline.toISOString());
+    const storedNoOp = await prisma.review.findUnique({
+      where: { id: memberAReviewId },
+    });
+    assert.equal(storedNoOp.rating, 5);
+    assert.equal(storedNoOp.comment, 'Sản phẩm tốt');
+    assert.equal(storedNoOp.updatedAt.toISOString(), noOpBaseline.toISOString());
 
     const both = await api(`/api/reviews/${memberAReviewId}`, {
       method: 'PATCH', token: tokenA, body: { rating: 4, comment: 'Final comment' },
@@ -445,12 +521,18 @@ test('Milestone 9A Review backend and eligibility', async (t) => {
     const other = await api(`/api/reviews/${memberAReviewId}`, {
       method: 'PATCH', token: tokenB, body: { rating: 1 },
     });
+    const afterOtherAttempt = await prisma.review.findUnique({
+      where: { id: memberAReviewId },
+    });
     const missing = await api('/api/reviews/999999999', {
       method: 'PATCH', token: tokenA, body: { rating: 1 },
     });
     assert.equal(other.status, 404);
     assert.equal(missing.status, 404);
     assert.deepEqual(other.body.error, missing.body.error);
+    assert.equal(afterOtherAttempt.rating, 4);
+    assert.equal(afterOtherAttempt.comment, 'Final comment');
+    assert.equal(afterOtherAttempt.updatedAt.toISOString(), both.body.data.updatedAt);
 
     for (const body of [
       {},

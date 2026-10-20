@@ -339,6 +339,25 @@ export async function updateMemberReview(memberId, rawReviewId, input) {
   const data = validateReviewBody(input, { partial: true });
 
   return prisma.$transaction(async (tx) => {
+    const currentReview = await tx.review.findFirst({
+      where: { id: reviewId, userId: memberId },
+    });
+    if (!currentReview) throw reviewNotFoundError();
+
+    const candidateRating = Object.hasOwn(data, 'rating')
+      ? data.rating
+      : currentReview.rating;
+    const candidateComment = Object.hasOwn(data, 'comment')
+      ? data.comment
+      : currentReview.comment;
+
+    if (
+      candidateRating === currentReview.rating
+      && candidateComment === currentReview.comment
+    ) {
+      return serializeOwnReview(currentReview);
+    }
+
     const result = await tx.review.updateMany({
       where: { id: reviewId, userId: memberId },
       data,

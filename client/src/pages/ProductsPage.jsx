@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { getProducts, getFilterOptions, ALLOWED_SORTS } from '../services/catalogService';
+import { getProductReviewSummaries } from '../services/reviewService';
 import ProductCard from '../components/catalog/ProductCard';
 import ProductFilters from '../components/products/ProductFilters';
 import MobileFilterDrawer from '../components/products/MobileFilterDrawer';
@@ -125,6 +126,37 @@ function ProductsPage() {
       pageSize: 12,
     });
   }, [appliedFilters]);
+
+  // Batch review summaries for current page products
+  const [pageReviewSummaries, setPageReviewSummaries] = useState({});
+
+  const reviewSlugKey = useMemo(() => {
+    return items.map((product) => product.slug).join(',');
+  }, [items]);
+
+  useEffect(() => {
+    if (!reviewSlugKey) return;
+
+    const currentSlugs = reviewSlugKey.split(',').filter(Boolean);
+    let isCurrent = true;
+
+    getProductReviewSummaries(currentSlugs)
+      .then((data) => {
+        if (!isCurrent || !data?.summaries) return;
+        const map = {};
+        for (const summary of data.summaries) {
+          map[summary.slug] = summary;
+        }
+        setPageReviewSummaries(map);
+      })
+      .catch(() => {
+        // Graceful fallback: maintain normal product card rendering
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [reviewSlugKey]);
 
   // Filter action handlers
   const handleToggleBrand = (slug) => {
@@ -440,6 +472,7 @@ function ProductsPage() {
                       key={product.slug}
                       product={product}
                       colorway={product.displayColorway}
+                      reviewSummary={pageReviewSummaries[product.slug]}
                     />
                   ))}
                 </div>

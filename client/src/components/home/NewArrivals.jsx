@@ -6,8 +6,9 @@ import ProductCard from '../catalog/ProductCard';
  * New Arrivals Section
  * Displays top 8 recently cataloged products in a 4-column desktop / 2-column mobile grid.
  */
-function NewArrivals() {
-  const newArrivals = useMemo(() => getNewArrivals(8), []);
+function NewArrivals({ products, reviewSummaries }) {
+  const defaultProducts = useMemo(() => getNewArrivals(8), []);
+  const items = products || defaultProducts;
 
   return (
     <section id="new-arrivals" className="py-12 sm:py-16 md:py-20 border-b border-[#e5e5e0] bg-white">
@@ -32,8 +33,12 @@ function NewArrivals() {
 
         {/* Product Grid: 4 columns on desktop, 3 on tablet, 2 on mobile */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
-          {newArrivals.map((product) => (
-            <ProductCard key={product.slug} product={product} />
+          {items.map((product) => (
+            <ProductCard
+              key={product.slug}
+              product={product}
+              reviewSummary={reviewSummaries?.[product.slug]}
+            />
           ))}
         </div>
       </div>

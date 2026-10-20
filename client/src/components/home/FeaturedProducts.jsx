@@ -7,8 +7,9 @@ import ProductCard from '../catalog/ProductCard';
  * Displays 6 curated flagship models representing all 5 brands.
  * Arranged in a 3-column desktop / 2-column mobile grid over subtle cream canvas.
  */
-function FeaturedProducts() {
-  const featured = useMemo(() => getFeaturedProducts(), []);
+function FeaturedProducts({ products, reviewSummaries }) {
+  const defaultProducts = useMemo(() => getFeaturedProducts(), []);
+  const items = products || defaultProducts;
 
   return (
     <section id="featured" className="py-12 sm:py-16 md:py-20 border-b border-[#e5e5e0] bg-[#f8f8f6]">
@@ -33,8 +34,12 @@ function FeaturedProducts() {
 
         {/* Product Grid: 3 columns on desktop/tablet, 2 on mobile */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
-          {featured.map((product) => (
-            <ProductCard key={product.slug} product={product} />
+          {items.map((product) => (
+            <ProductCard
+              key={product.slug}
+              product={product}
+              reviewSummary={reviewSummaries?.[product.slug]}
+            />
           ))}
         </div>
       </div>
