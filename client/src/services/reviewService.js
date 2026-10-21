@@ -62,6 +62,11 @@ export function updateReview(token, reviewId, payload) {
   });
 }
 
+export function getMemberReviews(token, { page = 1, limit = 10 } = {}) {
+  const query = new URLSearchParams({ page: String(page), limit: String(limit) });
+  return reviewRequest(`/member/reviews?${query}`, { token });
+}
+
 export function getProductReviewSummaries(slugs) {
   if (!slugs || slugs.length === 0) {
     return Promise.resolve({ summaries: [] });

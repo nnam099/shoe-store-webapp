@@ -1,8 +1,7 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   getCart,
-  saveCart,
   updateCartItemQuantity,
   removeCartItem,
   clearCart,
@@ -10,8 +9,8 @@ import {
   CART_UPDATED_EVENT,
 } from '../utils/cartStorage';
 import {
-  hydrateCartItems,
-  getNormalizedCart,
+  createInitialHydratedItems,
+  revalidateCartItems,
   calculateCartTotals,
 } from '../services/cartService';
 import CartItem from '../components/cart/CartItem';
@@ -19,70 +18,87 @@ import CartSummary from '../components/cart/CartSummary';
 import EmptyCart from '../components/cart/EmptyCart';
 
 /**
- * Pure calculation of normalized cart and its metadata without side effects.
- * Reads localStorage via getCart(), runs pure catalog hydration and normalization.
- * Returns normalized items and whether changes are pending persistence.
- */
-function computeNormalizedCart() {
-  const stored = getCart();
-  const hydrated = hydrateCartItems(stored);
-  const normalized = getNormalizedCart(hydrated);
-
-  return {
-    items: normalized.normalizedCart,
-    pendingNormalization: normalized.hasChanges,
-    hadPruned: normalized.prunedCount > 0,
-    hadClamped: normalized.clampedCount > 0,
-  };
-}
-
-/**
  * CartPage Component
  * Main cart experience for STEP/LAB storefront.
- * Features pure initial hydration, continuous catalog revalidation,
- * post-mount normalization persistence of invalid/stale identities, and cross-tab/same-tab sync.
+ * Features optimistic instant render from localStorage snapshot, safe asynchronous
+ * catalog revalidation without silent data deletion, and race-condition guards.
  */
 function CartPage() {
-  // Pure initial state computation without side effects (no storage writes or event dispatch in render phase)
-  const [cartState, setCartState] = useState(() => computeNormalizedCart());
+  // 1. Initial stored items read from localStorage
+  const [storedItems, setStoredItems] = useState(() => getCart());
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
-  const [normalizationNotice, setNormalizationNotice] = useState(() =>
-    cartState.hadPruned ? 'Một số sản phẩm không còn khả dụng đã được cập nhật khỏi giỏ hàng.' : null
-  );
 
-  const pendingNormalizationRef = useRef(cartState.pendingNormalization);
-  const storedItems = cartState.items;
+  // 2. Hydrated items state: starts with optimistic snapshot, then updated by revalidation
+  const [hydratedItems, setHydratedItems] = useState(() => createInitialHydratedItems(storedItems));
+  const [isRevalidating, setIsRevalidating] = useState(false);
+  const [cartNotice, setCartNotice] = useState(null);
 
-  // Persist normalization changes safely after mount if stale rows were pruned or quantities clamped
-  useEffect(() => {
-    if (pendingNormalizationRef.current) {
-      pendingNormalizationRef.current = false;
-      saveCart(cartState.items);
+  // Sequence ref to guard against stale async responses overwriting newer user actions
+  const revalidationSeqRef = useRef(0);
+
+  // 3. Revalidate cart items against live Catalog API
+  const runRevalidation = useCallback((itemsToRevalidate) => {
+    if (!Array.isArray(itemsToRevalidate) || itemsToRevalidate.length === 0) {
+      setHydratedItems([]);
+      setIsRevalidating(false);
+      return;
     }
-  }, [cartState.items]);
 
-  // Auto-dismiss normalization notice after 4 seconds
+    const currentSeq = ++revalidationSeqRef.current;
+    setIsRevalidating(true);
+
+    revalidateCartItems(itemsToRevalidate)
+      .then(({ hydratedItems: updatedItems, summary }) => {
+        // Discard response if a newer user action started a revalidation
+        if (currentSeq !== revalidationSeqRef.current) return;
+
+        setHydratedItems(updatedItems);
+        setIsRevalidating(false);
+
+        // Determine user-friendly notice
+        if (summary.networkFailed) {
+          setCartNotice('Không thể kiểm tra tồn kho mới nhất do lỗi mạng. Dữ liệu giỏ hàng được giữ nguyên.');
+        } else if (summary.priceChanges.length > 0) {
+          setCartNotice('Giá một số sản phẩm đã được cập nhật theo giá hiện tại trên hệ thống.');
+        } else if (summary.outOfStockItems.length > 0) {
+          setCartNotice('Một số sản phẩm trong giỏ hàng hiện đã hết hàng.');
+        } else if (summary.exceedingItems.length > 0) {
+          setCartNotice('Số lượng một số sản phẩm vượt quá tồn kho có sẵn. Vui lòng điều chỉnh.');
+        } else if (summary.unavailableItems.length > 0) {
+          setCartNotice('Một số sản phẩm hiện không còn khả dụng trên hệ thống.');
+        }
+      })
+      .catch(() => {
+        if (currentSeq !== revalidationSeqRef.current) return;
+        setIsRevalidating(false);
+        setCartNotice('Không thể kết nối đến máy chủ để kiểm tra tồn kho.');
+      });
+  }, []);
+
+  // Trigger revalidation when storedItems identity array changes
   useEffect(() => {
-    if (normalizationNotice) {
+    // oxlint-disable-next-line react/set-state-in-effect -- Begin async revalidation when stored items change
+    runRevalidation(storedItems);
+  }, [storedItems, runRevalidation]);
+
+  // Auto-dismiss notices after 6 seconds
+  useEffect(() => {
+    if (cartNotice) {
       const timer = setTimeout(() => {
-        setNormalizationNotice(null);
-      }, 4000);
+        setCartNotice(null);
+      }, 6000);
       return () => clearTimeout(timer);
     }
-  }, [normalizationNotice]);
+  }, [cartNotice]);
 
-  // Listen for cart mutations in same tab or other tabs
+  // 4. Cross-tab and same-tab sync
   useEffect(() => {
     const handleSync = () => {
-      const next = computeNormalizedCart();
-      setCartState(next);
-      if (next.hadPruned) {
-        setNormalizationNotice('Một số sản phẩm không còn khả dụng đã được cập nhật khỏi giỏ hàng.');
-      }
+      const currentStored = getCart();
+      setStoredItems(currentStored);
     };
 
     const handleStorage = (e) => {
-      // Only react if cart storage key was updated or localStorage was cleared (e.key === null)
       if (e.key === CART_STORAGE_KEY || e.key === null) {
         handleSync();
       }
@@ -97,45 +113,30 @@ function CartPage() {
     };
   }, []);
 
-  // Pure catalog rehydration
-  const hydratedItems = useMemo(() => {
-    return hydrateCartItems(storedItems);
-  }, [storedItems]);
-
-  // Totals calculation
-  const { subtotal, totalQuantity, hasOutOfStock } = useMemo(() => {
+  // 5. Totals calculation
+  const totals = useMemo(() => {
     return calculateCartTotals(hydratedItems);
   }, [hydratedItems]);
 
   // Handlers
   const handleUpdateQuantity = (id, newQuantity, stockLimit) => {
-    const updated = updateCartItemQuantity(id, newQuantity, stockLimit);
-    setCartState({
-      items: updated,
-      pendingNormalization: false,
-      hadPruned: false,
-      hadClamped: false,
-    });
+    // Increment sequence to invalidate in-flight revalidations
+    revalidationSeqRef.current++;
+    const updated = updateCartItemQuantity(id, newQuantity, stockLimit || Infinity);
+    setStoredItems(updated);
   };
 
   const handleRemoveItem = (id) => {
+    revalidationSeqRef.current++;
     const updated = removeCartItem(id);
-    setCartState({
-      items: updated,
-      pendingNormalization: false,
-      hadPruned: false,
-      hadClamped: false,
-    });
+    setStoredItems(updated);
   };
 
   const handleConfirmClear = () => {
+    revalidationSeqRef.current++;
     clearCart();
-    setCartState({
-      items: [],
-      pendingNormalization: false,
-      hadPruned: false,
-      hadClamped: false,
-    });
+    setStoredItems([]);
+    setHydratedItems([]);
     setIsConfirmingClear(false);
   };
 
@@ -159,35 +160,80 @@ function CartPage() {
           <h1 className="text-2xl sm:text-3xl font-extrabold uppercase tracking-tight text-[#121212]">
             Giỏ hàng của bạn
           </h1>
-          {hydratedItems.length > 0 && (
+          {storedItems.length > 0 && (
             <span className="text-xs font-semibold text-[#737373] uppercase tracking-wider">
-              {totalQuantity} sản phẩm
+              {totals.totalQuantity} sản phẩm
             </span>
           )}
         </div>
 
-        {/* Normalization Status Notice */}
-        {normalizationNotice && (
+        {/* Revalidation Notice */}
+        {cartNotice && (
           <div
             role="status"
             aria-live="polite"
-            className="mb-6 p-3 bg-[#fefce8] border border-[#fef08a] text-[#854d0e] text-xs font-semibold rounded-xs flex items-center gap-2"
+            className="mb-6 p-3 bg-[#fefce8] border border-[#fef08a] text-[#854d0e] text-xs font-semibold rounded-xs flex items-center justify-between gap-2"
           >
-            <svg className="w-4 h-4 shrink-0 text-[#ca8a04]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span>{normalizationNotice}</span>
+            <div className="flex items-center gap-2">
+              <svg className="w-4 h-4 shrink-0 text-[#ca8a04]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>{cartNotice}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setCartNotice(null)}
+              className="text-[#a16207] hover:text-[#713f12] text-xs font-bold"
+              aria-label="Đóng thông báo"
+            >
+              ✕
+            </button>
           </div>
         )}
 
-        {/* Main Cart Content */}
-        {hydratedItems.length === 0 ? (
+        {/* Content Layout */}
+        {storedItems.length === 0 ? (
           <EmptyCart />
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
-            {/* Cart Items Column (Desktop: 65% / 8 cols) */}
-            <div className="lg:col-span-8 space-y-4">
-              <div className="divide-y divide-[#e5e5e0]">
+            {/* Cart Items List */}
+            <div className="lg:col-span-8">
+              <div className="flex items-center justify-between pb-3 mb-2 border-b border-[#e5e5e0]">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#737373]">
+                  Sản phẩm trong giỏ
+                </span>
+
+                {isConfirmingClear ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-[#b91c1c]">Xóa toàn bộ?</span>
+                    <button
+                      type="button"
+                      onClick={handleConfirmClear}
+                      className="text-xs font-bold text-[#b91c1c] underline hover:text-[#7f1d1d] cursor-pointer"
+                    >
+                      Đồng ý
+                    </button>
+                    <span className="text-[#d4d4cb]">|</span>
+                    <button
+                      type="button"
+                      onClick={() => setIsConfirmingClear(false)}
+                      className="text-xs font-semibold text-[#737373] hover:text-[#121212] cursor-pointer"
+                    >
+                      Hủy
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setIsConfirmingClear(true)}
+                    className="text-xs font-semibold text-[#737373] hover:text-[#b91c1c] transition-colors cursor-pointer"
+                  >
+                    Xóa tất cả
+                  </button>
+                )}
+              </div>
+
+              <div className="space-y-0">
                 {hydratedItems.map((item) => (
                   <CartItem
                     key={item.id}
@@ -197,45 +243,18 @@ function CartPage() {
                   />
                 ))}
               </div>
-
-              {/* Clear Cart Action Bar (Touch Targets >= 44px) */}
-              <div className="pt-2 sm:pt-4 flex justify-end">
-                {!isConfirmingClear ? (
-                  <button
-                    type="button"
-                    onClick={() => setIsConfirmingClear(true)}
-                    className="min-h-[44px] py-2 px-2 sm:px-3 inline-flex items-center text-xs font-semibold text-[#737373] hover:text-[#b91c1c] transition-colors cursor-pointer select-none"
-                  >
-                    Xóa toàn bộ giỏ hàng
-                  </button>
-                ) : (
-                  <div className="inline-flex items-center gap-2 p-1.5 bg-[#fef2f2] border border-[#fecaca] rounded-xs text-xs">
-                    <span className="font-semibold text-[#b91c1c]">Xóa toàn bộ?</span>
-                    <button
-                      type="button"
-                      onClick={handleConfirmClear}
-                      className="min-h-[44px] px-3 bg-[#b91c1c] text-white font-bold rounded-xs hover:bg-[#991b1b] transition-colors cursor-pointer inline-flex items-center"
-                    >
-                      Xác nhận
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setIsConfirmingClear(false)}
-                      className="min-h-[44px] px-3 bg-white text-[#525252] border border-[#e5e5e0] font-medium rounded-xs hover:bg-[#f5f5f3] transition-colors cursor-pointer inline-flex items-center"
-                    >
-                      Hủy
-                    </button>
-                  </div>
-                )}
-              </div>
             </div>
 
-            {/* Order Summary Column (Desktop: 35% / 4 cols, Sticky) */}
+            {/* Cart Order Summary Sidebar */}
             <div className="lg:col-span-4 sticky lg:top-24">
               <CartSummary
-                subtotal={subtotal}
-                totalQuantity={totalQuantity}
-                hasOutOfStock={hasOutOfStock}
+                subtotal={totals.subtotal}
+                totalQuantity={totals.totalQuantity}
+                hasOutOfStock={totals.hasOutOfStock}
+                hasUnavailable={totals.hasUnavailable}
+                hasExceedingStock={totals.hasExceedingStock}
+                hasUnverified={totals.hasUnverified}
+                isRevalidating={isRevalidating}
               />
             </div>
           </div>

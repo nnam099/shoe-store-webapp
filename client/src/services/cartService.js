@@ -1,140 +1,265 @@
-import { getProductBySlug } from './catalogService.js';
+import { fetchCatalogProduct } from './catalogService.js';
 
 /**
- * Hydrates stored cart rows against the single source of truth (Mock Catalog).
- * 
- * Defines clear item validity:
- * - identityValid: Product exists AND Colorway exists in Product AND Variant exists in Colorway
- * - isPurchasable: identityValid AND currentStock > 0
- * - currentUnitPrice: colorway.salePrice ?? colorway.price (only when identityValid)
- * 
- * @param {Array} storedItems - Items read from localStorage
- * @returns {Array<Object>} Hydrated cart items
+ * Creates optimistic initial hydrated cart rows directly from localStorage snapshot.
+ * Ensures instant UI rendering before async revalidation completes.
+ *
+ * @param {Array} storedItems - Rows read from localStorage
+ * @returns {Array<Object>}
  */
-export function hydrateCartItems(storedItems = []) {
+export function createInitialHydratedItems(storedItems = []) {
   if (!Array.isArray(storedItems)) return [];
 
   return storedItems.map((storedItem) => {
-    const product = getProductBySlug(storedItem.productSlug);
-    const colorway = product?.colorways.find((c) => c.slug === storedItem.colorwaySlug) || null;
-    const variant = colorway?.variants.find((v) => v.size === storedItem.size) || null;
-
-    const identityValid = Boolean(product && colorway && variant);
-    const currentStock = variant ? variant.stock : 0;
-    const isPurchasable = Boolean(identityValid && currentStock > 0);
-
-    const currentUnitPrice = identityValid
-      ? (colorway.salePrice ?? colorway.price)
-      : (storedItem.unitPrice || 0);
-
-    const originalPrice = identityValid ? colorway.price : null;
-    const isSale = identityValid && colorway.salePrice != null && colorway.salePrice < colorway.price;
-
-    // Quantity clamping logic:
-    // If stock > 0 and stored quantity exceeds current stock -> clamp to currentStock
-    // If stock = 0 -> preserve stored quantity (do not clamp to 0; minimum valid quantity is 1)
-    const storedQty = Math.max(1, parseInt(storedItem.quantity, 10) || 1);
-    let effectiveQuantity = storedQty;
-    let wasQuantityClamped = false;
-
-    if (identityValid && currentStock > 0 && storedQty > currentStock) {
-      effectiveQuantity = currentStock;
-      wasQuantityClamped = true;
-    }
-
-    const lineTotal = currentUnitPrice * effectiveQuantity;
+    const quantity = Math.max(1, parseInt(storedItem.quantity, 10) || 1);
+    const unitPrice = typeof storedItem.unitPrice === 'number' && storedItem.unitPrice >= 0
+      ? storedItem.unitPrice
+      : 0;
 
     return {
-      storedItem,
       id: storedItem.id || `${storedItem.productSlug}:${storedItem.colorwaySlug}:${storedItem.size}`,
-      product,
-      colorway,
-      variant,
-      identityValid,
-      isPurchasable,
-      currentStock,
-      currentUnitPrice,
-      originalPrice,
-      isSale,
-      effectiveQuantity,
-      wasQuantityClamped,
-      lineTotal,
+      storedItem,
+      product: null,
+      colorway: null,
+      variant: null,
+      identityValid: true, // optimistically assumed until verified
+      isVerified: false,
+      isUnavailable: false,
+      isOutOfStock: false,
+      isExceedingStock: false,
+      isPriceChanged: false,
+      previousPrice: unitPrice,
+      isPurchasable: true,
+      currentStock: null,
+      currentUnitPrice: unitPrice,
+      originalPrice: unitPrice,
+      isSale: false,
+      effectiveQuantity: quantity,
+      lineTotal: unitPrice * quantity,
     };
   });
 }
 
 /**
- * Normalizes cart items by pruning invalid identities and persisting clamped quantities.
- * Returns normalized rows for localStorage and summary of changes.
- * 
- * @param {Array<Object>} hydratedItems
- * @returns {{ normalizedCart: Array, hasChanges: boolean, prunedCount: number, clampedCount: number }}
+ * Revalidates stored cart items asynchronously against live Catalog API data.
+ * Does NOT mutate or delete stored cart items automatically.
+ *
+ * @param {Array} storedItems - Items from localStorage
+ * @returns {Promise<{ hydratedItems: Array<Object>, summary: Object }>}
  */
-export function getNormalizedCart(hydratedItems = []) {
-  let hasChanges = false;
-  let prunedCount = 0;
-  let clampedCount = 0;
-
-  const normalizedCart = [];
-
-  for (const item of hydratedItems) {
-    if (!item.identityValid) {
-      // Stale invalid row -> prune
-      hasChanges = true;
-      prunedCount++;
-      continue;
-    }
-
-    if (item.wasQuantityClamped) {
-      hasChanges = true;
-      clampedCount++;
-    }
-
-    normalizedCart.push({
-      ...item.storedItem,
-      id: item.id,
-      quantity: item.effectiveQuantity,
-      unitPrice: item.currentUnitPrice, // Update unit price snapshot as good practice
-    });
+export async function revalidateCartItems(storedItems = []) {
+  if (!Array.isArray(storedItems) || storedItems.length === 0) {
+    return {
+      hydratedItems: [],
+      summary: {
+        priceChanges: [],
+        exceedingItems: [],
+        outOfStockItems: [],
+        unavailableItems: [],
+        networkFailed: false,
+      },
+    };
   }
 
+  // 1. Deduplicate unique product slugs
+  const uniqueSlugs = [...new Set(storedItems.map((item) => item.productSlug).filter(Boolean))];
+
+  // 2. Fetch live product data for each slug in parallel
+  const productMap = new Map();
+  let networkFailed = false;
+
+  await Promise.allSettled(
+    uniqueSlugs.map(async (slug) => {
+      try {
+        const product = await fetchCatalogProduct(slug);
+        productMap.set(slug, { status: 'found', product });
+      } catch (err) {
+        if (err?.status === 404 || err?.code === 'PRODUCT_NOT_FOUND') {
+          productMap.set(slug, { status: 'not_found', product: null });
+        } else {
+          // Network or server error
+          networkFailed = true;
+          productMap.set(slug, { status: 'error', error: err });
+        }
+      }
+    })
+  );
+
+  const priceChanges = [];
+  const exceedingItems = [];
+  const outOfStockItems = [];
+  const unavailableItems = [];
+
+  // 3. Hydrate and validate each cart row
+  const hydratedItems = storedItems.map((storedItem) => {
+    const slug = storedItem.productSlug;
+    const lookup = productMap.get(slug);
+
+    const storedQty = Math.max(1, parseInt(storedItem.quantity, 10) || 1);
+    const storedPrice = typeof storedItem.unitPrice === 'number' && storedItem.unitPrice >= 0
+      ? storedItem.unitPrice
+      : 0;
+
+    const baseRow = {
+      id: storedItem.id || `${storedItem.productSlug}:${storedItem.colorwaySlug}:${storedItem.size}`,
+      storedItem,
+      product: null,
+      colorway: null,
+      variant: null,
+      isVerified: false,
+      identityValid: true,
+      isUnavailable: false,
+      isOutOfStock: false,
+      isExceedingStock: false,
+      isPriceChanged: false,
+      previousPrice: storedPrice,
+      isPurchasable: false,
+      currentStock: null,
+      currentUnitPrice: storedPrice,
+      originalPrice: storedPrice,
+      isSale: false,
+      effectiveQuantity: storedQty,
+      lineTotal: storedPrice * storedQty,
+    };
+
+    // If fetch failed due to network error: preserve snapshot with unverified flag
+    if (!lookup || lookup.status === 'error') {
+      return {
+        ...baseRow,
+        isVerified: false,
+        isPurchasable: false, // unverified items cannot be confirmed for checkout until connected
+      };
+    }
+
+    // If product was deleted or inactive (404)
+    if (lookup.status === 'not_found' || !lookup.product) {
+      unavailableItems.push(storedItem);
+      return {
+        ...baseRow,
+        isVerified: true,
+        identityValid: false,
+        isUnavailable: true,
+        isPurchasable: false,
+      };
+    }
+
+    const product = lookup.product;
+    const colorway = product.colorways?.find((cw) => cw.slug === storedItem.colorwaySlug) || null;
+    const variant = colorway?.variants?.find((v) => v.size === storedItem.size) || null;
+
+    // If colorway or variant not found in active product
+    if (!colorway || !variant) {
+      unavailableItems.push(storedItem);
+      return {
+        ...baseRow,
+        product,
+        colorway,
+        isVerified: true,
+        identityValid: false,
+        isUnavailable: true,
+        isPurchasable: false,
+      };
+    }
+
+    // Variant found and verified!
+    const currentStock = Number.isInteger(variant.stock) ? Math.max(0, variant.stock) : 0;
+    const liveUnitPrice = colorway.salePrice ?? colorway.price ?? storedPrice;
+    const isPriceChanged = storedPrice !== liveUnitPrice;
+    const isOutOfStock = currentStock === 0;
+    const isExceedingStock = !isOutOfStock && storedQty > currentStock;
+
+    if (isPriceChanged) {
+      priceChanges.push({ storedItem, previousPrice: storedPrice, newPrice: liveUnitPrice });
+    }
+    if (isOutOfStock) {
+      outOfStockItems.push(storedItem);
+    } else if (isExceedingStock) {
+      exceedingItems.push({ storedItem, availableStock: currentStock });
+    }
+
+    const isPurchasable = !isOutOfStock && !isExceedingStock;
+    const lineTotal = liveUnitPrice * storedQty;
+
+    return {
+      ...baseRow,
+      product,
+      colorway,
+      variant,
+      isVerified: true,
+      identityValid: true,
+      isUnavailable: false,
+      isOutOfStock,
+      isExceedingStock,
+      isPriceChanged,
+      previousPrice: storedPrice,
+      isPurchasable,
+      currentStock,
+      currentUnitPrice: liveUnitPrice,
+      originalPrice: colorway.price,
+      isSale: colorway.salePrice != null && colorway.salePrice < colorway.price,
+      effectiveQuantity: storedQty, // Preserved! Does NOT silently clamp stored quantity
+      lineTotal,
+    };
+  });
+
   return {
-    normalizedCart,
-    hasChanges,
-    prunedCount,
-    clampedCount,
+    hydratedItems,
+    summary: {
+      priceChanges,
+      exceedingItems,
+      outOfStockItems,
+      unavailableItems,
+      networkFailed,
+    },
   };
 }
 
 /**
- * Calculates cart totals from hydrated items.
+ * Calculates order totals from hydrated items.
  * Rules:
- * - Rows with currentStock = 0 DO NOT count into purchasable subtotal.
- * - Out-of-stock items still count in totalQuantity (item pairs) until user removes them.
+ * - Only items that are confirmed `isPurchasable: true` count into subtotal.
+ * - Out-of-stock, unavailable or exceeding-stock items prevent invalid checkout.
  */
 export function calculateCartTotals(hydratedItems = []) {
   let subtotal = 0;
   let totalQuantity = 0;
-  let hasOutOfStock = false;
   let purchasableItemCount = 0;
+  let hasOutOfStock = false;
+  let hasUnavailable = false;
+  let hasExceedingStock = false;
+  let hasUnverified = false;
 
   for (const item of hydratedItems) {
-    if (!item.identityValid) continue;
-
     totalQuantity += item.effectiveQuantity;
 
-    if (item.currentStock === 0) {
+    if (!item.isVerified) {
+      hasUnverified = true;
+    }
+
+    if (item.isUnavailable) {
+      hasUnavailable = true;
+    } else if (item.isOutOfStock) {
       hasOutOfStock = true;
-    } else {
+    } else if (item.isExceedingStock) {
+      hasExceedingStock = true;
+    }
+
+    if (item.isPurchasable) {
       subtotal += item.lineTotal;
       purchasableItemCount += item.effectiveQuantity;
     }
   }
 
+  const hasIssues = hasOutOfStock || hasUnavailable || hasExceedingStock;
+
   return {
     subtotal,
     totalQuantity,
-    hasOutOfStock,
     purchasableItemCount,
+    hasIssues,
+    hasOutOfStock,
+    hasUnavailable,
+    hasExceedingStock,
+    hasUnverified,
   };
 }

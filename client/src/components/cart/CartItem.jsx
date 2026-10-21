@@ -17,11 +17,12 @@ function CartItem({ item, onUpdateQuantity, onRemove }) {
     originalPrice,
     isSale,
     effectiveQuantity,
-    wasQuantityClamped,
     lineTotal,
+    isOutOfStock = false,
+    isUnavailable = false,
+    isExceedingStock = false,
+    isPriceChanged = false,
   } = item;
-
-  const isOutOfStock = currentStock === 0;
 
   // Build product back-link URL
   const targetUrl = product
@@ -35,8 +36,11 @@ function CartItem({ item, onUpdateQuantity, onRemove }) {
   const colorwayName = colorway?.name || storedItem.colorwayName;
   const thumbnail = colorway?.thumbnail || storedItem.thumbnail;
 
-  const isMinusDisabled = isOutOfStock || effectiveQuantity <= 1;
-  const isPlusDisabled = isOutOfStock || effectiveQuantity >= currentStock;
+  const isMinusDisabled = isOutOfStock || isUnavailable || effectiveQuantity <= 1;
+  const isPlusDisabled =
+    isOutOfStock ||
+    isUnavailable ||
+    (typeof currentStock === 'number' && effectiveQuantity >= currentStock);
 
   return (
     <article className="py-4 sm:py-6 border-b border-[#e5e5e0] bg-white p-3.5 sm:p-5 rounded-xs transition-colors grid grid-cols-[88px_1fr] sm:grid-cols-[112px_1fr] gap-x-3.5 sm:gap-x-6">
@@ -94,24 +98,37 @@ function CartItem({ item, onUpdateQuantity, onRemove }) {
         </div>
 
         {/* Status Warnings */}
-        {(isOutOfStock || currentStock <= 3 || wasQuantityClamped) && (
-          <div className="mt-1.5 space-y-0.5">
-            {isOutOfStock && (
+        {(isUnavailable || isOutOfStock || isExceedingStock || (currentStock !== null && currentStock <= 3) || isPriceChanged) && (
+          <div className="mt-1.5 space-y-1">
+            {isUnavailable && (
+              <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-[#fef2f2] border border-[#fecaca] text-[#b91c1c] text-[10px] sm:text-[11px] font-bold uppercase tracking-wider rounded-xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#b91c1c]" />
+                <span>Sản phẩm hiện không khả dụng</span>
+              </div>
+            )}
+
+            {!isUnavailable && isOutOfStock && (
               <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-[#fef2f2] border border-[#fecaca] text-[#b91c1c] text-[10px] sm:text-[11px] font-bold uppercase tracking-wider rounded-xs">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#b91c1c]" />
                 <span>Hết hàng</span>
               </div>
             )}
 
-            {!isOutOfStock && currentStock <= 3 && (
+            {!isUnavailable && !isOutOfStock && isExceedingStock && (
+              <p className="text-[10px] sm:text-[11px] font-bold text-[#b91c1c]">
+                Tồn kho chỉ còn {currentStock} đôi. Vui lòng giảm số lượng.
+              </p>
+            )}
+
+            {!isUnavailable && !isOutOfStock && !isExceedingStock && currentStock !== null && currentStock <= 3 && (
               <p className="text-[10px] sm:text-[11px] font-semibold text-[#b91c1c]">
                 Chỉ còn {currentStock} đôi
               </p>
             )}
 
-            {wasQuantityClamped && (
+            {isPriceChanged && (
               <p className="text-[10px] sm:text-[11px] font-medium text-[#c2410c]">
-                Số lượng đã được điều chỉnh theo tồn kho hiện tại.
+                Giá đã cập nhật: {formatPrice(currentUnitPrice)}
               </p>
             )}
           </div>

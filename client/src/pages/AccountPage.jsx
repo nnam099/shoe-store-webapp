@@ -78,6 +78,12 @@ export default function AccountPage() {
               Đơn hàng của tôi
             </Link>
             <Link
+              to="/account/reviews"
+              className="mt-2 flex min-h-[44px] items-center text-xs font-extrabold uppercase tracking-widest underline underline-offset-4 hover:text-red-300 focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-4"
+            >
+              Đánh giá của tôi
+            </Link>
+            <Link
               to="/account/change-password"
               className="mt-2 flex min-h-[44px] items-center text-xs font-extrabold uppercase tracking-widest underline underline-offset-4 hover:text-red-300 focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-4"
             >

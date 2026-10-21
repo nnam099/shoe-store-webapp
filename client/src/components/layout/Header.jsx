@@ -152,6 +152,13 @@ export default function Header() {
                 >
                   Đơn hàng của tôi
                 </Link>
+                <Link
+                  to="/account/reviews"
+                  onClick={closeMenus}
+                  className="flex min-h-[44px] items-center px-4 text-xs font-bold uppercase tracking-wider hover:bg-[#f5f5f3] focus-visible:outline-2 focus-visible:outline-[#991b1b] focus-visible:outline-offset-[-2px]"
+                >
+                  Đánh giá của tôi
+                </Link>
                 <button
                   type="button"
                   onClick={handleLogout}
@@ -249,6 +256,13 @@ export default function Header() {
                   className="min-h-[44px] flex items-center text-sm font-bold uppercase tracking-wider text-[#121212] hover:text-[#991b1b] focus-visible:outline-2 focus-visible:outline-[#991b1b] focus-visible:outline-offset-2"
                 >
                   Đơn hàng của tôi
+                </Link>
+                <Link
+                  to="/account/reviews"
+                  onClick={closeMenus}
+                  className="min-h-[44px] flex items-center text-sm font-bold uppercase tracking-wider text-[#121212] hover:text-[#991b1b] focus-visible:outline-2 focus-visible:outline-[#991b1b] focus-visible:outline-offset-2"
+                >
+                  Đánh giá của tôi
                 </Link>
                 <button
                   type="button"

@@ -1,15 +1,31 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { getCategories } from '../../services/catalogService';
+import { CATEGORY_DEFINITIONS } from '../../services/catalogService';
 import { getAssetUrl } from '../../config/site';
 
 /**
  * Shop By Category Section
- * Features 4 curated categories with model counts derived dynamically from the catalog.
+ * Features curated categories filtered strictly by active backend categories
+ * with model counts derived dynamically from the catalog options.
  * Visual presentation adheres to STEP/LAB minimal editorial look with representative silhouettes.
  */
-function ShopByCategory() {
-  const categories = useMemo(() => getCategories(), []);
+function ShopByCategory({ activeCategories = null }) {
+  const categories = useMemo(() => {
+    if (!Array.isArray(activeCategories)) {
+      return CATEGORY_DEFINITIONS;
+    }
+    const categoryCountMap = new Map(
+      activeCategories.map((c) => [c.slug, c.productCount ?? c.count ?? 0])
+    );
+    return CATEGORY_DEFINITIONS
+      .filter((cat) => categoryCountMap.has(cat.slug))
+      .map((cat) => ({
+        ...cat,
+        modelCount: categoryCountMap.get(cat.slug) || 0,
+      }));
+  }, [activeCategories]);
+
+  if (categories.length === 0) return null;
 
   return (
     <section id="categories" className="py-8 sm:py-14 md:py-20 border-b border-[#e5e5e0] bg-[#f8f8f6]">

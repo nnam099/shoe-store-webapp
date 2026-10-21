@@ -1,8 +1,30 @@
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { siteConfig, getAssetUrl } from '../../config/site';
 
-export default function BrandLogos() {
-  const brands = siteConfig.brands;
+export default function BrandLogos({ activeBrands = null }) {
+  // Only display brands that are active in the backend catalog options
+  const brands = useMemo(() => {
+    if (!Array.isArray(activeBrands)) {
+      return siteConfig.brands;
+    }
+    const activeSlugSet = new Set(activeBrands.map((b) => b.slug));
+    return siteConfig.brands
+      .filter((b) => activeSlugSet.has(b.id))
+      .map((b) => {
+        const backendBrand = activeBrands.find((ab) => ab.slug === b.id);
+        return {
+          ...b,
+          id: b.id,
+          slug: b.id,
+          name: backendBrand?.name || b.name,
+          logo: backendBrand?.logoUrl || b.logo,
+        };
+      });
+  }, [activeBrands]);
+
+  if (brands.length === 0) return null;
+
   // Repeat list for infinite loop marquee track (-50% translation)
   const marqueeItems = [...brands, ...brands, ...brands, ...brands];
 

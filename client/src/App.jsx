@@ -16,6 +16,7 @@ import AccountPage from './pages/AccountPage';
 import ChangePasswordPage from './pages/ChangePasswordPage';
 import MemberOrdersPage from './pages/MemberOrdersPage';
 import MemberOrderDetailPage from './pages/MemberOrderDetailPage';
+import MemberReviewsPage from './pages/MemberReviewsPage';
 import RequireMember from './components/auth/RequireMember';
 import { AuthProvider } from './context/AuthContext';
 
@@ -91,6 +92,14 @@ function App() {
                 element={(
                   <RequireMember>
                     <MemberOrderDetailPage />
+                  </RequireMember>
+                )}
+              />
+              <Route
+                path="/account/reviews"
+                element={(
+                  <RequireMember>
+                    <MemberReviewsPage />
                   </RequireMember>
                 )}
               />

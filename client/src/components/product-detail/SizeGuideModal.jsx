@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { SIZES } from '../../data/catalog';
+import { SIZES } from '../../services/catalogService';
 
 /**
  * SizeGuideModal Component

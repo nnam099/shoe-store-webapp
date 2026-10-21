@@ -363,6 +363,15 @@ test('Milestone 9A Review backend and eligibility', async (t) => {
     assert.equal(ratingOne.body.data.rating, 1);
     assert.equal(ratingOne.body.data.comment, 'Product A review');
     memberAReviewId = ratingOne.body.data.reviewId;
+    assert.equal(ratingOne.body.data.createdAt, ratingOne.body.data.updatedAt);
+    const storedRatingOne = await prisma.review.findUnique({
+      where: { id: memberAReviewId },
+      select: { createdAt: true, updatedAt: true },
+    });
+    assert.equal(
+      storedRatingOne.createdAt.toISOString(),
+      storedRatingOne.updatedAt.toISOString()
+    );
 
     const ratingFive = await api(`/api/products/${productA.slug}/reviews`, {
       method: 'POST',
@@ -390,6 +399,110 @@ test('Milestone 9A Review backend and eligibility', async (t) => {
       });
       assert.equal(response.status, 404);
       assert.equal(response.body.error.code, 'PRODUCT_NOT_FOUND');
+    }
+  });
+
+  await t.test('creation and effective edits preserve explicit timestamp semantics', async () => {
+    await createTestOrder({
+      memberId: statusMember.id,
+      product: productC,
+      variant: variantC,
+      status: 'COMPLETED',
+    });
+
+    let timestampReviewId;
+    try {
+      const created = await api(`/api/products/${productC.slug}/reviews`, {
+        method: 'POST',
+        token: statusToken,
+        body: { rating: 4, comment: '  Timestamp review  ' },
+      });
+      assert.equal(created.status, 201);
+      timestampReviewId = created.body.data.reviewId;
+      assert.equal(created.body.data.comment, 'Timestamp review');
+      assert.equal(created.body.data.createdAt, created.body.data.updatedAt);
+
+      const storedCreated = await prisma.review.findUnique({
+        where: { id: timestampReviewId },
+      });
+      assert.equal(
+        storedCreated.createdAt.toISOString(),
+        storedCreated.updatedAt.toISOString()
+      );
+
+      const immediateNoOp = await api(`/api/reviews/${timestampReviewId}`, {
+        method: 'PATCH',
+        token: statusToken,
+        body: { rating: 4, comment: 'Timestamp review' },
+      });
+      assert.equal(immediateNoOp.status, 200);
+      assert.equal(immediateNoOp.body.data.updatedAt, created.body.data.updatedAt);
+
+      const whitespaceNoOp = await api(`/api/reviews/${timestampReviewId}`, {
+        method: 'PATCH',
+        token: statusToken,
+        body: { comment: '   Timestamp review   ' },
+      });
+      assert.equal(whitespaceNoOp.status, 200);
+      assert.equal(whitespaceNoOp.body.data.updatedAt, created.body.data.updatedAt);
+
+      const partialNoOp = await api(`/api/reviews/${timestampReviewId}`, {
+        method: 'PATCH',
+        token: statusToken,
+        body: { rating: 4 },
+      });
+      assert.equal(partialNoOp.status, 200);
+      assert.equal(partialNoOp.body.data.comment, 'Timestamp review');
+      assert.equal(partialNoOp.body.data.updatedAt, created.body.data.updatedAt);
+      const storedNoOp = await prisma.review.findUnique({
+        where: { id: timestampReviewId },
+      });
+      assert.equal(storedNoOp.rating, 4);
+      assert.equal(storedNoOp.comment, 'Timestamp review');
+      assert.equal(storedNoOp.createdAt.toISOString(), created.body.data.createdAt);
+      assert.equal(storedNoOp.updatedAt.toISOString(), created.body.data.updatedAt);
+
+      const unauthorized = await api(`/api/reviews/${timestampReviewId}`, {
+        method: 'PATCH',
+        token: tokenB,
+        body: { rating: 1 },
+      });
+      assert.equal(unauthorized.status, 404);
+      assert.equal(unauthorized.body.error.code, 'REVIEW_NOT_FOUND');
+      const afterUnauthorized = await prisma.review.findUnique({
+        where: { id: timestampReviewId },
+      });
+      assert.equal(afterUnauthorized.rating, 4);
+      assert.equal(afterUnauthorized.updatedAt.toISOString(), created.body.data.updatedAt);
+
+      const immediateEdit = await api(`/api/reviews/${timestampReviewId}`, {
+        method: 'PATCH',
+        token: statusToken,
+        body: { rating: 5 },
+      });
+      assert.equal(immediateEdit.status, 200);
+      assert.equal(immediateEdit.body.data.rating, 5);
+      assert.equal(immediateEdit.body.data.comment, 'Timestamp review');
+      assert.ok(
+        Date.parse(immediateEdit.body.data.updatedAt) > Date.parse(created.body.data.createdAt)
+      );
+
+      const sequentialEdit = await api(`/api/reviews/${timestampReviewId}`, {
+        method: 'PATCH',
+        token: statusToken,
+        body: { comment: 'Timestamp review updated' },
+      });
+      assert.equal(sequentialEdit.status, 200);
+      assert.equal(sequentialEdit.body.data.rating, 5);
+      assert.equal(sequentialEdit.body.data.comment, 'Timestamp review updated');
+      assert.ok(
+        Date.parse(sequentialEdit.body.data.updatedAt)
+          > Date.parse(immediateEdit.body.data.updatedAt)
+      );
+    } finally {
+      if (timestampReviewId !== undefined) {
+        await prisma.review.deleteMany({ where: { id: timestampReviewId } });
+      }
     }
   });
 

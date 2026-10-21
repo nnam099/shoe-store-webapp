@@ -16,18 +16,18 @@ const formatVND = (amount) => {
  * Preserves active colorway deep-linking when navigated from product listing.
  */
 function ProductCard({ product, colorway, reviewSummary }) {
-  const activeColorway = colorway || product.displayColorway || product.defaultColorway;
-  const { name, brand } = product;
+  const activeColorway = colorway || product?.displayColorway || product?.defaultColorway || {};
+  const { name, brand } = product || {};
   const { price, salePrice, thumbnail } = activeColorway;
-  const hasSale = salePrice !== null && salePrice < price;
+  const hasSale = salePrice !== null && salePrice !== undefined && salePrice < price;
   const discountPercent = hasSale ? Math.round(((price - salePrice) / price) * 100) : 0;
 
+  const effectiveReviewSummary = reviewSummary || product?.reviewSummary;
   const hasReviews = Boolean(
-    reviewSummary &&
-    reviewSummary.reviewCount > 0 &&
-    Number.isFinite(Number(reviewSummary.averageRating))
+    effectiveReviewSummary?.reviewCount > 0 &&
+    Number.isFinite(Number(effectiveReviewSummary.averageRating))
   );
-  const formattedRating = hasReviews ? Number(reviewSummary.averageRating).toFixed(1) : '';
+  const formattedRating = hasReviews ? Number(effectiveReviewSummary.averageRating).toFixed(1) : '';
 
   // Build target URL: preserve active colorway if different from default
   const targetUrl =
@@ -67,10 +67,10 @@ function ProductCard({ product, colorway, reviewSummary }) {
           </h3>
           {hasReviews && (
             <div className="mt-1.5 flex items-center gap-1.5 text-[11px] sm:text-xs text-[#737373]">
-              <ReviewRating rating={reviewSummary.averageRating} size="xs" />
+              <ReviewRating rating={effectiveReviewSummary.averageRating} size="xs" />
               <span className="font-bold text-[#121212]">{formattedRating}</span>
               <span className="text-[#a3a3a3]">·</span>
-              <span>{reviewSummary.reviewCount}</span>
+              <span>{effectiveReviewSummary.reviewCount}</span>
             </div>
           )}
         </div>

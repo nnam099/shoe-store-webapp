@@ -169,6 +169,18 @@ function serializeOwnReview(review) {
   };
 }
 
+function nextReviewUpdatedAt(review) {
+  const now = new Date();
+  const latestStoredTime = Math.max(
+    review.createdAt.getTime(),
+    review.updatedAt.getTime()
+  );
+
+  return now.getTime() > latestStoredTime
+    ? now
+    : new Date(latestStoredTime + 1);
+}
+
 async function resolveProduct(slug, dbClient = prisma) {
   const normalizedSlug = normalizeProductSlug(slug);
   const product = await dbClient.product.findUnique({
@@ -322,8 +334,15 @@ export async function createMemberReview(memberId, slug, input) {
   }
 
   try {
+    const now = new Date();
     const review = await prisma.review.create({
-      data: { ...data, productId: product.id, userId: memberId },
+      data: {
+        ...data,
+        productId: product.id,
+        userId: memberId,
+        createdAt: now,
+        updatedAt: now,
+      },
     });
     return serializeOwnReview(review);
   } catch (error) {
@@ -360,7 +379,10 @@ export async function updateMemberReview(memberId, rawReviewId, input) {
 
     const result = await tx.review.updateMany({
       where: { id: reviewId, userId: memberId },
-      data,
+      data: {
+        ...data,
+        updatedAt: nextReviewUpdatedAt(currentReview),
+      },
     });
     if (result.count === 0) throw reviewNotFoundError();
 

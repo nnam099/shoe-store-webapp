@@ -1,26 +1,43 @@
-import {
-  products,
-  SIZES,
-  COLOR_FAMILIES,
-  COLORWAY_FAMILY_MAP,
-} from '../data/catalog.js';
+/**
+ * STEP/LAB Storefront Catalog Service
+ * Single source of truth for public catalog data, communicating with
+ * backend endpoints (/api/catalog/options, /api/catalog/products, /api/catalog/products/:slug).
+ */
+
+export const SIZES = Object.freeze(['36', '37', '38', '39', '40', '41', '42', '43', '44']);
 
 /**
  * 6 Approved Sort Modes for STEP/LAB Product Listing
  */
-export const ALLOWED_SORTS = [
+export const ALLOWED_SORTS = Object.freeze([
   'newest',
   'oldest',
   'price-asc',
   'price-desc',
   'name-asc',
   'name-desc',
-];
+]);
 
 /**
- * Category metadata definitions for STEP/LAB storefront.
+ * Presentation swatch styling for the 9 standard color families.
+ * Backend only stores slug and name; visual tokens remain frontend-owned.
  */
-const CATEGORY_DEFINITIONS = [
+export const COLOR_SWATCH_MAP = Object.freeze({
+  black: { hex: '#121212', border: '#262626' },
+  white: { hex: '#f8f8f6', border: '#d1d1cc' },
+  grey: { hex: '#9ca3af', border: '#6b7280' },
+  blue: { hex: '#2563eb', border: '#1d4ed8' },
+  green: { hex: '#16a34a', border: '#15803d' },
+  red: { hex: '#dc2626', border: '#b91c1c' },
+  'pink-purple': { hex: '#ec4899', border: '#db2777' },
+  'orange-yellow': { hex: '#f59e0b', border: '#d97706' },
+  'brown-beige': { hex: '#92400e', border: '#78350f' },
+});
+
+/**
+ * Curated editorial presentation metadata for homepage category showcase.
+ */
+export const CATEGORY_DEFINITIONS = Object.freeze([
   {
     slug: 'lifestyle',
     name: 'Lifestyle',
@@ -53,10 +70,10 @@ const CATEGORY_DEFINITIONS = [
     thumbnail: 'products/adidas/samba-og/white-black/1.avif',
     repProduct: 'Adidas Samba OG',
   },
-];
+]);
 
 /**
- * Normalize text by trimming, lowercasing, and removing Vietnamese diacritics
+ * Normalizes text by lowercasing and removing Vietnamese diacritics.
  */
 export function normalizeText(str) {
   if (!str) return '';
@@ -70,258 +87,315 @@ export function normalizeText(str) {
 }
 
 /**
- * Helper to parse comma-separated or array param values
+ * Normalizes HTTP error responses into structured Error objects.
  */
-function toArray(val) {
-  if (!val) return [];
-  if (Array.isArray(val)) return val.map((s) => String(s).trim()).filter(Boolean);
-  return String(val)
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
+function createCatalogApiError(response, data) {
+  const error = new Error(
+    data?.error?.message || response.statusText || 'Không thể tải dữ liệu sản phẩm.'
+  );
+  error.status = response.status;
+  error.code = data?.error?.code || 'UNKNOWN_ERROR';
+  error.issues = data?.error?.issues || [];
+  return error;
 }
 
 /**
- * Get featured products for homepage showcase (6 flagship products)
+ * Base fetcher for public Catalog API.
  */
-export const getFeaturedProducts = () => {
-  return products.filter((product) => product.isFeatured);
-};
-
-/**
- * Get new arrivals sorted by deterministic createdAt DESC (8 products)
- */
-export const getNewArrivals = (limit = 8) => {
-  return [...products]
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-    .slice(0, limit);
-};
-
-/**
- * Get categories with dynamic model counts
- */
-export const getCategories = () => {
-  const counts = {};
-  products.forEach((product) => {
-    product.categories.forEach((catSlug) => {
-      counts[catSlug] = (counts[catSlug] || 0) + 1;
+async function catalogRequest(path) {
+  let response;
+  try {
+    response = await fetch(`/api/catalog${path}`, {
+      headers: {
+        Accept: 'application/json',
+      },
     });
-  });
+  } catch {
+    const error = new Error('Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại mạng.');
+    error.code = 'NETWORK_ERROR';
+    error.status = 0;
+    throw error;
+  }
 
-  return CATEGORY_DEFINITIONS.map((cat) => ({
-    ...cat,
-    modelCount: counts[cat.slug] || 0,
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw createCatalogApiError(response, data);
+  }
+
+  return data?.data;
+}
+
+/**
+ * In-flight promise cache to deduplicate concurrent requests for identical slugs.
+ */
+const inFlightProductRequests = new Map();
+
+/**
+ * Normalizes a raw Product object from GET /api/catalog/products/:slug.
+ * Ensures defaultColorway is readily accessible and category names are safely extractable.
+ */
+export function normalizeCatalogProduct(product) {
+  if (!product || typeof product !== 'object') return null;
+
+  const colorways = Array.isArray(product.colorways) ? product.colorways : [];
+  const defaultColorway =
+    colorways.find((cw) => cw.isDefault || cw.slug === product.defaultColorwaySlug) ||
+    colorways[0] ||
+    null;
+
+  const categoryList = Array.isArray(product.categories) ? product.categories : [];
+  const categoryNames = categoryList.map((cat) =>
+    typeof cat === 'string' ? cat : cat?.name || cat?.slug || ''
+  ).filter(Boolean);
+
+  return {
+    ...product,
+    defaultColorway,
+    categoryNames,
+  };
+}
+
+/**
+ * Fetches public catalog options (active brands, categories, colors, sizes, price range, sorts).
+ * Adapts backend response for existing UI components:
+ * - maps `productCount` to `count` for brands and categories
+ * - enriches colors with `id = slug` and visual swatch tokens (hex, border)
+ */
+export async function fetchCatalogOptions() {
+  const raw = await catalogRequest('/options');
+
+  const brands = (raw?.brands || []).map((brand) => ({
+    slug: brand.slug,
+    name: brand.name,
+    logoUrl: brand.logoUrl,
+    productCount: brand.productCount ?? 0,
+    count: brand.productCount ?? 0,
   }));
-};
 
-/**
- * Get options metadata for filters (Brands, Categories, Colors, Sizes, Price bounds)
- */
-export const getFilterOptions = () => {
-  // Brand list derived from products
-  const brandMap = new Map();
-  products.forEach((p) => {
-    if (!brandMap.has(p.brand.slug)) {
-      brandMap.set(p.brand.slug, { slug: p.brand.slug, name: p.brand.name, count: 0 });
-    }
-    brandMap.get(p.brand.slug).count += 1;
-  });
+  const categories = (raw?.categories || []).map((cat) => ({
+    slug: cat.slug,
+    name: cat.name,
+    productCount: cat.productCount ?? 0,
+    count: cat.productCount ?? 0,
+  }));
 
-  // Category counts
-  const categoryMap = new Map();
-  CATEGORY_DEFINITIONS.forEach((c) => {
-    categoryMap.set(c.slug, { slug: c.slug, name: c.name, count: 0 });
-  });
-  products.forEach((p) => {
-    p.categories.forEach((cSlug) => {
-      if (categoryMap.has(cSlug)) {
-        categoryMap.get(cSlug).count += 1;
-      }
-    });
+  const colors = (raw?.colors || []).map((col) => {
+    const swatch = COLOR_SWATCH_MAP[col.slug] || { hex: '#d4d4ce', border: '#a3a3a3' };
+    return {
+      slug: col.slug,
+      name: col.name,
+      id: col.slug,
+      hex: swatch.hex,
+      border: swatch.border,
+    };
   });
 
   return {
-    brands: Array.from(brandMap.values()),
-    categories: Array.from(categoryMap.values()),
-    colors: COLOR_FAMILIES,
-    sizes: SIZES,
-    priceRange: {
-      min: 1360000,
-      max: 3800000,
+    brands,
+    categories,
+    colors,
+    sizes: Array.isArray(raw?.sizes) ? raw.sizes : [...SIZES],
+    priceRange: raw?.priceRange || { min: null, max: null },
+    sorts: Array.isArray(raw?.sorts) ? raw.sorts : [...ALLOWED_SORTS],
+  };
+}
+
+/**
+ * Fetches public products list with multi-faceted filtering, sorting and pagination.
+ *
+ * @param {Object} params
+ * @param {string} [params.q]
+ * @param {string|string[]} [params.brand]
+ * @param {string|string[]} [params.category]
+ * @param {string|string[]} [params.color]
+ * @param {string|string[]} [params.size]
+ * @param {number|string} [params.minPrice]
+ * @param {number|string} [params.maxPrice]
+ * @param {string} [params.sort]
+ * @param {boolean} [params.featured]
+ * @param {number|string} [params.page]
+ * @param {number|string} [params.limit]
+ */
+export async function fetchCatalogProducts(params = {}) {
+  const query = new URLSearchParams();
+
+  if (params.q && typeof params.q === 'string' && params.q.trim()) {
+    query.set('q', params.q.trim());
+  }
+
+  const toCsv = (val) => {
+    if (!val) return '';
+    if (Array.isArray(val)) return val.filter(Boolean).join(',');
+    return String(val).trim();
+  };
+
+  const brandCsv = toCsv(params.brand);
+  if (brandCsv) query.set('brand', brandCsv);
+
+  const categoryCsv = toCsv(params.category);
+  if (categoryCsv) query.set('category', categoryCsv);
+
+  const colorCsv = toCsv(params.color);
+  if (colorCsv) query.set('color', colorCsv);
+
+  const sizeCsv = toCsv(params.size);
+  if (sizeCsv) query.set('size', sizeCsv);
+
+  if (params.minPrice !== undefined && params.minPrice !== null && params.minPrice !== '') {
+    const num = Number(params.minPrice);
+    if (Number.isFinite(num) && num >= 0) query.set('minPrice', String(num));
+  }
+
+  if (params.maxPrice !== undefined && params.maxPrice !== null && params.maxPrice !== '') {
+    const num = Number(params.maxPrice);
+    if (Number.isFinite(num) && num >= 0) query.set('maxPrice', String(num));
+  }
+
+  if (params.sort && ALLOWED_SORTS.includes(params.sort)) {
+    query.set('sort', params.sort);
+  }
+
+  if (params.featured === true || params.featured === 'true') {
+    query.set('featured', 'true');
+  } else if (params.featured === false || params.featured === 'false') {
+    query.set('featured', 'false');
+  }
+
+  if (params.page) {
+    const p = Number(params.page);
+    if (Number.isSafeInteger(p) && p >= 1) query.set('page', String(p));
+  }
+
+  if (params.limit) {
+    const l = Number(params.limit);
+    if (Number.isSafeInteger(l) && l >= 1) query.set('limit', String(l));
+  }
+
+  const queryString = query.toString();
+  const endpoint = queryString ? `/products?${queryString}` : '/products';
+  const data = await catalogRequest(endpoint);
+
+  return {
+    products: Array.isArray(data?.products) ? data.products : [],
+    pagination: data?.pagination || {
+      page: 1,
+      limit: 12,
+      totalItems: 0,
+      totalPages: 1,
     },
   };
-};
+}
 
 /**
- * Query products with multi-faceted filtering, searching, sorting, and pagination.
- * Guarantees SAME-COLORWAY rule for Color, Size (stock > 0), and Price.
+ * Fetches a single public Product by slug.
+ * Deduplicates concurrent in-flight requests for the exact same slug.
+ *
+ * @param {string} slug - Product slug
+ * @returns {Promise<Object>} Normalized product detail object
  */
-export const getProducts = (params = {}) => {
-  const search = normalizeText(params.q);
-  const brands = toArray(params.brand);
-  const categories = toArray(params.category);
-  const colors = toArray(params.color);
-  const sizes = toArray(params.size);
-
-  const minPriceNum =
-    params.minPrice != null && params.minPrice !== '' && !isNaN(Number(params.minPrice))
-      ? Math.max(0, Number(params.minPrice))
-      : null;
-
-  const maxPriceNum =
-    params.maxPrice != null && params.maxPrice !== '' && !isNaN(Number(params.maxPrice))
-      ? Math.max(0, Number(params.maxPrice))
-      : null;
-
-  const sort = ALLOWED_SORTS.includes(params.sort) ? params.sort : 'newest';
-  const page = Math.max(1, parseInt(params.page, 10) || 1);
-  const pageSize = Math.max(1, parseInt(params.pageSize, 10) || 12);
-
-  const hasColorFilter = colors.length > 0;
-  const hasSizeFilter = sizes.length > 0;
-  const hasPriceFilter = minPriceNum !== null || maxPriceNum !== null;
-  const hasSpecificColorwayFilter = hasColorFilter || hasSizeFilter || hasPriceFilter;
-
-  // Filter products
-  const matchedList = [];
-
-  for (const product of products) {
-    // 1. Search text filter (tokens across product name, brand name, and colorway names)
-    if (search) {
-      const searchTokens = search.split(/\s+/).filter(Boolean);
-      const allColorwayNames = product.colorways.map((c) => c.name).join(' ');
-      const targetText = normalizeText(
-        `${product.name} ${product.brand.name} ${allColorwayNames}`
-      );
-      const allTokensMatch = searchTokens.every((token) => targetText.includes(token));
-      if (!allTokensMatch) continue;
-    }
-
-    // 2. Brand filter (OR within selected brands)
-    if (brands.length > 0 && !brands.includes(product.brand.slug)) {
-      continue;
-    }
-
-    // 3. Category filter (OR within selected categories)
-    if (categories.length > 0) {
-      const hasCat = product.categories.some((c) => categories.includes(c));
-      if (!hasCat) continue;
-    }
-
-    // 4. Same-Colorway Evaluation for Color, Size (stock > 0), and Price
-    const matchingColorways = [];
-
-    for (const colorway of product.colorways) {
-      // 4a. Color filter: colorway must belong to at least one selected family
-      if (hasColorFilter) {
-        const families = COLORWAY_FAMILY_MAP[colorway.slug] || [];
-        const matchesColor = colors.some((c) => families.includes(c));
-        if (!matchesColor) continue;
-      }
-
-      // 4b. Size filter: colorway must have in-stock variant (stock > 0) matching selected size
-      if (hasSizeFilter) {
-        const hasInStockSize = colorway.variants.some(
-          (v) => sizes.includes(v.size) && v.stock > 0
-        );
-        if (!hasInStockSize) continue;
-      }
-
-      // 4c. Price filter: effective price of THIS colorway must be within range
-      const effectivePrice = colorway.salePrice ?? colorway.price;
-      if (minPriceNum !== null && effectivePrice < minPriceNum) continue;
-      if (maxPriceNum !== null && effectivePrice > maxPriceNum) continue;
-
-      // Colorway meets all criteria
-      matchingColorways.push(colorway);
-    }
-
-    // If specific colorway filters are active, product only matches if at least 1 colorway qualifies
-    if (hasSpecificColorwayFilter && matchingColorways.length === 0) {
-      continue;
-    }
-
-    // 5. Determine displayColorway
-    let displayColorway;
-    if (!hasSpecificColorwayFilter) {
-      displayColorway = product.defaultColorway;
-    } else {
-      // If defaultColorway is among matching colorways, preserve it; otherwise pick first matching
-      const defaultIsMatched = matchingColorways.some(
-        (cw) => cw.slug === product.defaultColorwaySlug
-      );
-      displayColorway = defaultIsMatched
-        ? product.defaultColorway
-        : matchingColorways[0];
-    }
-
-    const displayEffectivePrice = displayColorway.salePrice ?? displayColorway.price;
-
-    matchedList.push({
-      ...product,
-      displayColorway,
-      displayEffectivePrice,
-    });
+export async function fetchCatalogProduct(slug) {
+  if (!slug || typeof slug !== 'string') {
+    const error = new Error('Slug sản phẩm không hợp lệ.');
+    error.status = 400;
+    error.code = 'INVALID_SLUG';
+    throw error;
   }
 
-  // Sorter
-  matchedList.sort((a, b) => {
-    switch (sort) {
-      case 'price-asc':
-        return a.displayEffectivePrice - b.displayEffectivePrice;
-      case 'price-desc':
-        return b.displayEffectivePrice - a.displayEffectivePrice;
-      case 'name-asc':
-        return a.name.localeCompare(b.name, 'vi');
-      case 'name-desc':
-        return b.name.localeCompare(a.name, 'vi');
-      case 'oldest':
-        return new Date(a.createdAt) - new Date(b.createdAt);
-      case 'newest':
-      default:
-        return new Date(b.createdAt) - new Date(a.createdAt);
+  const cleanSlug = slug.trim().toLowerCase();
+
+  // Deduplicate in-flight requests
+  if (inFlightProductRequests.has(cleanSlug)) {
+    return inFlightProductRequests.get(cleanSlug);
+  }
+
+  const fetchPromise = (async () => {
+    try {
+      const data = await catalogRequest(`/products/${encodeURIComponent(cleanSlug)}`);
+      return normalizeCatalogProduct(data?.product);
+    } finally {
+      inFlightProductRequests.delete(cleanSlug);
     }
-  });
+  })();
 
-  // Pagination
-  const total = matchedList.length;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const currentPage = Math.min(page, totalPages);
-  const startIndex = (currentPage - 1) * pageSize;
-  const items = matchedList.slice(startIndex, startIndex + pageSize);
-
-  return {
-    items,
-    total,
-    totalPages,
-    currentPage,
-    pageSize,
-  };
-};
+  inFlightProductRequests.set(cleanSlug, fetchPromise);
+  return fetchPromise;
+}
 
 /**
- * Get product by slug for Product Detail page.
- * Returns product object or null if not found.
+ * Resolves the colorway by slug from a product with validation status.
+ * Pure synchronous helper working against the normalized product object.
  */
-export const getProductBySlug = (slug) => {
-  if (!slug) return null;
-  return products.find((p) => p.slug === slug) || null;
-};
+export function getColorwayBySlug(product, colorwaySlug) {
+  if (!product || !Array.isArray(product.colorways)) {
+    return { colorway: null, isValid: false };
+  }
 
-/**
- * Get colorway by slug from a product with validation status.
- * If colorwaySlug is valid, returns { colorway, isValid: true }.
- * If colorwaySlug is omitted/empty, returns { colorway: defaultColorway, isValid: true }.
- * If colorwaySlug is provided but not found, returns { colorway: defaultColorway, isValid: false }.
- */
-export const getColorwayBySlug = (product, colorwaySlug) => {
-  if (!product) return { colorway: null, isValid: false };
+  const defaultColorway =
+    product.defaultColorway ||
+    product.colorways.find((cw) => cw.isDefault || cw.slug === product.defaultColorwaySlug) ||
+    product.colorways[0] ||
+    null;
+
   if (!colorwaySlug) {
-    return { colorway: product.defaultColorway, isValid: true };
+    return { colorway: defaultColorway, isValid: true };
   }
+
   const match = product.colorways.find((cw) => cw.slug === colorwaySlug);
   if (match) {
     return { colorway: match, isValid: true };
   }
-  return { colorway: product.defaultColorway, isValid: false };
-};
+
+  return { colorway: defaultColorway, isValid: false };
+}
+
+/**
+ * Fetches New Arrivals (latest 8 eligible products based on createdAt DESC).
+ */
+export function fetchNewArrivals(limit = 8) {
+  return fetchCatalogProducts({ sort: 'newest', limit });
+}
+
+/**
+ * Fetches Featured Products (up to 6 eligible featured products).
+ */
+export function fetchFeaturedProducts(limit = 6) {
+  return fetchCatalogProducts({ featured: true, limit });
+}
+
+/**
+ * In-memory thumbnail cache for Member Reviews page.
+ * Keeps successful thumbnail lookups and 404/inactive outcomes in memory.
+ * Transient network failures are NOT cached so they can be retried.
+ */
+const reviewThumbnailCache = new Map();
+
+/**
+ * Resolves a product thumbnail for a review asynchronously.
+ * Returns the thumbnail string path, or null if inactive/not found/failed.
+ */
+export async function resolveReviewProductThumbnail(slug) {
+  if (!slug || typeof slug !== 'string') return null;
+  const cleanSlug = slug.trim().toLowerCase();
+
+  if (reviewThumbnailCache.has(cleanSlug)) {
+    return reviewThumbnailCache.get(cleanSlug);
+  }
+
+  try {
+    const product = await fetchCatalogProduct(cleanSlug);
+    const thumbnail =
+      product?.defaultColorway?.thumbnail ||
+      product?.colorways?.[0]?.thumbnail ||
+      null;
+
+    reviewThumbnailCache.set(cleanSlug, thumbnail);
+    return thumbnail;
+  } catch (error) {
+    // If 404, product is inactive or deleted: cache null so we don't spam 404s
+    if (error?.status === 404 || error?.code === 'PRODUCT_NOT_FOUND') {
+      reviewThumbnailCache.set(cleanSlug, null);
+    }
+    // Transient network errors are not cached permanently
+    return null;
+  }
+}

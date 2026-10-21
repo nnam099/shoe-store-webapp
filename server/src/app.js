@@ -4,6 +4,7 @@ import healthRoutes from './routes/health.routes.js';
 import authRoutes from './routes/auth.routes.js';
 import orderRoutes from './routes/order.routes.js';
 import reviewRoutes from './routes/review.routes.js';
+import catalogRoutes from './routes/catalog.routes.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 
 const app = express();
@@ -16,6 +17,7 @@ app.use('/api', healthRoutes);
 app.use('/api', authRoutes);
 app.use('/api', orderRoutes);
 app.use('/api', reviewRoutes);
+app.use('/api', catalogRoutes);
 
 // Catch-all 404 handler
 app.use((req, res) => {

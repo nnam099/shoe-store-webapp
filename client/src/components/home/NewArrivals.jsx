@@ -1,14 +1,12 @@
-import { useMemo } from 'react';
-import { getNewArrivals } from '../../services/catalogService';
 import ProductCard from '../catalog/ProductCard';
 
 /**
  * New Arrivals Section
  * Displays top 8 recently cataloged products in a 4-column desktop / 2-column mobile grid.
  */
-function NewArrivals({ products, reviewSummaries }) {
-  const defaultProducts = useMemo(() => getNewArrivals(8), []);
-  const items = products || defaultProducts;
+function NewArrivals({ products = [], isLoading = false, error = null }) {
+  const items = Array.isArray(products) ? products : [];
+  if (!isLoading && items.length === 0 && !error) return null;
 
   return (
     <section id="new-arrivals" className="py-12 sm:py-16 md:py-20 border-b border-[#e5e5e0] bg-white">
@@ -31,16 +29,32 @@ function NewArrivals({ products, reviewSummaries }) {
           </p>
         </div>
 
-        {/* Product Grid: 4 columns on desktop, 3 on tablet, 2 on mobile */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
-          {items.map((product) => (
-            <ProductCard
-              key={product.slug}
-              product={product}
-              reviewSummary={reviewSummaries?.[product.slug]}
-            />
-          ))}
-        </div>
+        {/* Product Grid / Skeletons / Error */}
+        {isLoading ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="border border-[#e5e5e0] bg-white p-3 sm:p-4 rounded-xs animate-pulse">
+                <div className="aspect-square bg-[#f0f0ed] mb-3" />
+                <div className="h-3 w-16 bg-[#e5e5e0] mb-2" />
+                <div className="h-4 w-32 bg-[#e5e5e0] mb-3" />
+                <div className="h-4 w-20 bg-[#e5e5e0]" />
+              </div>
+            ))}
+          </div>
+        ) : error ? (
+          <div className="p-8 text-center text-xs text-[#737373] bg-[#f8f8f6] border border-[#e5e5e0] rounded-xs">
+            Không thể tải danh sách sản phẩm mới. Vui lòng tải lại trang.
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
+            {items.map((product) => (
+              <ProductCard
+                key={product.slug}
+                product={product}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

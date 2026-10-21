@@ -1,7 +1,10 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { getProducts, getFilterOptions, ALLOWED_SORTS } from '../services/catalogService';
-import { getProductReviewSummaries } from '../services/reviewService';
+import {
+  fetchCatalogProducts,
+  fetchCatalogOptions,
+  ALLOWED_SORTS,
+} from '../services/catalogService';
 import ProductCard from '../components/catalog/ProductCard';
 import ProductFilters from '../components/products/ProductFilters';
 import MobileFilterDrawer from '../components/products/MobileFilterDrawer';
@@ -24,12 +27,35 @@ const SORT_OPTIONS = [
  * ProductsPage Component
  * Full-featured product catalog listing supporting search, multi-faceted filtering,
  * 6 approved sorting modes, deterministic pagination, and bi-directional URL synchronization.
+ * Uses live backend Catalog API for search, filter execution, sorting and pagination.
  */
 function ProductsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Filter options derived from catalog
-  const filterOptions = useMemo(() => getFilterOptions(), []);
+  // Active filter options loaded from backend API
+  const [filterOptions, setFilterOptions] = useState({
+    brands: [],
+    categories: [],
+    colors: [],
+    sizes: [],
+    priceRange: { min: null, max: null },
+  });
+
+  useEffect(() => {
+    let isCurrent = true;
+    fetchCatalogOptions()
+      .then((opts) => {
+        if (!isCurrent) return;
+        setFilterOptions(opts);
+      })
+      .catch(() => {
+        // Options loading error handled gracefully
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, []);
 
   // Parse applied filters from URL with strict sanitization
   const appliedFilters = useMemo(() => {
@@ -111,9 +137,21 @@ function ProductsPage() {
   // Mobile drawer open state
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
-  // Query catalog data
-  const { items, total, totalPages, currentPage } = useMemo(() => {
-    return getProducts({
+  // Product listing state with race-condition guard
+  const [productsState, setProductsState] = useState({
+    loading: true,
+    data: [],
+    pagination: { page: 1, limit: 12, totalItems: 0, totalPages: 1 },
+    error: null,
+  });
+
+  const activeFetchIdRef = useRef(0);
+
+  const fetchProducts = useCallback(() => {
+    const fetchId = ++activeFetchIdRef.current;
+    setProductsState((prev) => ({ ...prev, loading: true, error: null }));
+
+    fetchCatalogProducts({
       q: appliedFilters.q,
       brand: appliedFilters.brand,
       category: appliedFilters.category,
@@ -123,40 +161,41 @@ function ProductsPage() {
       maxPrice: appliedFilters.maxPrice,
       sort: appliedFilters.sort,
       page: appliedFilters.page,
-      pageSize: 12,
-    });
-  }, [appliedFilters]);
-
-  // Batch review summaries for current page products
-  const [pageReviewSummaries, setPageReviewSummaries] = useState({});
-
-  const reviewSlugKey = useMemo(() => {
-    return items.map((product) => product.slug).join(',');
-  }, [items]);
+      limit: 12,
+    })
+      .then((res) => {
+        if (fetchId !== activeFetchIdRef.current) return;
+        setProductsState({
+          loading: false,
+          data: res.products,
+          pagination: res.pagination,
+          error: null,
+        });
+      })
+      .catch((err) => {
+        if (fetchId !== activeFetchIdRef.current) return;
+        setProductsState((prev) => ({
+          ...prev,
+          loading: false,
+          error: err,
+        }));
+      });
+  }, [
+    appliedFilters.q,
+    appliedFilters.brand,
+    appliedFilters.category,
+    appliedFilters.color,
+    appliedFilters.size,
+    appliedFilters.minPrice,
+    appliedFilters.maxPrice,
+    appliedFilters.sort,
+    appliedFilters.page,
+  ]);
 
   useEffect(() => {
-    if (!reviewSlugKey) return;
-
-    const currentSlugs = reviewSlugKey.split(',').filter(Boolean);
-    let isCurrent = true;
-
-    getProductReviewSummaries(currentSlugs)
-      .then((data) => {
-        if (!isCurrent || !data?.summaries) return;
-        const map = {};
-        for (const summary of data.summaries) {
-          map[summary.slug] = summary;
-        }
-        setPageReviewSummaries(map);
-      })
-      .catch(() => {
-        // Graceful fallback: maintain normal product card rendering
-      });
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [reviewSlugKey]);
+    // oxlint-disable-next-line react/set-state-in-effect -- Fetch products when filters or pagination change
+    fetchProducts();
+  }, [fetchProducts]);
 
   // Filter action handlers
   const handleToggleBrand = (slug) => {
@@ -248,6 +287,11 @@ function ProductsPage() {
     (appliedFilters.minPrice ? 1 : 0) +
     (appliedFilters.maxPrice ? 1 : 0);
 
+  const total = productsState.pagination.totalItems;
+  const items = productsState.data;
+  const currentPage = productsState.pagination.page;
+  const totalPages = productsState.pagination.totalPages;
+
   return (
     <div className="bg-[#f8f8f6] min-h-screen py-6 sm:py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -276,7 +320,7 @@ function ProductsPage() {
             <div className="relative w-full">
               <input
                 type="text"
-                placeholder="Tìm theo tên, hãng, màu sắc..."
+                placeholder="Tìm theo tên sản phẩm..."
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 className="w-full h-11 text-xs py-2.5 pl-10 pr-10 bg-white border border-[#e5e5e0] focus:border-[#121212] focus:outline-none rounded-xs transition-colors shadow-2xs"
@@ -308,7 +352,7 @@ function ProductsPage() {
               )}
             </div>
 
-            {/* Mobile Filter Toggle & Sort Bar (12-16px below Search) */}
+            {/* Mobile Filter Toggle & Sort Bar */}
             <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[#e5e5e0]">
               <button
                 type="button"
@@ -348,7 +392,7 @@ function ProductsPage() {
           <div className="relative w-72 lg:w-80">
             <input
               type="text"
-              placeholder="Tìm theo tên, hãng, màu sắc..."
+              placeholder="Tìm theo tên sản phẩm..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className="w-full text-xs py-2 pl-9 pr-8 bg-white border border-[#e5e5e0] focus:border-[#121212] focus:outline-none rounded-xs transition-colors"
@@ -441,7 +485,41 @@ function ProductsPage() {
 
           {/* Products Grid Section */}
           <div className="col-span-1 md:col-span-3">
-            {total === 0 ? (
+            {productsState.error ? (
+              /* Error State */
+              <div className="bg-white border border-[#fecaca] p-8 sm:p-12 text-center rounded-xs my-6">
+                <div className="w-10 h-10 mx-auto mb-3 text-[#dc2626]">
+                  <svg className="w-full h-full" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <h3 className="text-base font-bold text-[#121212] mb-1">
+                  Không thể tải danh sách sản phẩm
+                </h3>
+                <p className="text-xs text-[#737373] max-w-sm mx-auto mb-4">
+                  Đã có lỗi xảy ra khi tải dữ liệu từ máy chủ. Vui lòng kiểm tra lại kết nối và thử lại.
+                </p>
+                <button
+                  type="button"
+                  onClick={fetchProducts}
+                  className="px-5 py-2.5 bg-[#121212] hover:bg-[#262626] text-white text-xs font-bold uppercase tracking-wider rounded-xs transition-colors cursor-pointer"
+                >
+                  Thử lại
+                </button>
+              </div>
+            ) : productsState.loading ? (
+              /* Loading Skeletons */
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-5">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="border border-[#e5e5e0] bg-white p-3 sm:p-4 rounded-xs animate-pulse">
+                    <div className="aspect-square bg-[#f0f0ed] mb-3" />
+                    <div className="h-3 w-16 bg-[#e5e5e0] mb-2" />
+                    <div className="h-4 w-36 bg-[#e5e5e0] mb-3" />
+                    <div className="h-4 w-24 bg-[#e5e5e0]" />
+                  </div>
+                ))}
+              </div>
+            ) : total === 0 ? (
               /* Empty State */
               <div className="bg-white border border-[#e5e5e0] p-10 sm:p-16 text-center rounded-xs my-6">
                 <div className="w-12 h-12 mx-auto mb-4 text-[#a3a3a3]">
@@ -458,7 +536,7 @@ function ProductsPage() {
                 <button
                   type="button"
                   onClick={handleClearAll}
-                  className="px-5 py-2.5 bg-[#121212] hover:bg-[#262626] text-white text-xs font-bold uppercase tracking-wider rounded-xs transition-colors"
+                  className="px-5 py-2.5 bg-[#121212] hover:bg-[#262626] text-white text-xs font-bold uppercase tracking-wider rounded-xs transition-colors cursor-pointer"
                 >
                   Xóa toàn bộ bộ lọc
                 </button>
@@ -472,7 +550,6 @@ function ProductsPage() {
                       key={product.slug}
                       product={product}
                       colorway={product.displayColorway}
-                      reviewSummary={pageReviewSummaries[product.slug]}
                     />
                   ))}
                 </div>

@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom';
-import { getProductBySlug, getColorwayBySlug } from '../services/catalogService';
+import { fetchCatalogProduct, getColorwayBySlug } from '../services/catalogService';
 import { formatPrice } from '../config/site';
 import { addToCart } from '../utils/cartStorage';
 import ProductGallery from '../components/product-detail/ProductGallery';
@@ -16,14 +16,47 @@ import ProductReviews from '../components/product-detail/ProductReviews';
  * Detailed view of a single product with full gallery, colorway deep linking,
  * deterministic stock variants, resilient localStorage cart addition, and
  * neutral factual product specifications.
+ * Communicates with backend Catalog API asynchronously.
  */
 function ProductDetailPage() {
   const { slug } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  // Query product data
-  const product = useMemo(() => getProductBySlug(slug), [slug]);
+  // Async product data state
+  const [productState, setProductState] = useState({
+    loading: true,
+    data: null,
+    error: null,
+  });
+
+  const loadProduct = useCallback(() => {
+    if (!slug) return;
+    setProductState((prev) => ({ ...prev, loading: true, error: null }));
+
+    fetchCatalogProduct(slug)
+      .then((product) => {
+        setProductState({
+          loading: false,
+          data: product,
+          error: null,
+        });
+      })
+      .catch((err) => {
+        setProductState({
+          loading: false,
+          data: null,
+          error: err,
+        });
+      });
+  }, [slug]);
+
+  useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- Fetch product when slug changes
+    loadProduct();
+  }, [loadProduct]);
+
+  const product = productState.data;
 
   // Read requested colorway slug from URL
   const requestedColorwaySlug = searchParams.get('colorway');
@@ -70,14 +103,86 @@ function ProductDetailPage() {
     }
   }, [activeColorwaySlug]);
 
-  // If product not found, render 404
+  // If loading product
+  if (productState.loading) {
+    return (
+      <div className="bg-[#f8f8f6] min-h-screen py-6 sm:py-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="h-4 w-48 bg-[#e5e5e0] mb-6 animate-pulse" />
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+            <div className="lg:col-span-7">
+              <div className="aspect-square bg-[#f0f0ed] border border-[#e5e5e0] rounded-xs animate-pulse" />
+            </div>
+            <div className="lg:col-span-5 space-y-6">
+              <div className="border-b border-[#e5e5e0] pb-5 space-y-3">
+                <div className="h-3 w-28 bg-[#e5e5e0] animate-pulse" />
+                <div className="h-8 w-64 bg-[#e5e5e0] animate-pulse" />
+                <div className="h-6 w-36 bg-[#e5e5e0] animate-pulse" />
+              </div>
+              <div className="h-24 bg-[#f0f0ed] border border-[#e5e5e0] animate-pulse" />
+              <div className="h-32 bg-[#f0f0ed] border border-[#e5e5e0] animate-pulse" />
+              <div className="h-12 bg-[#121212]/20 rounded-xs animate-pulse" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // If product not found (404)
+  if (
+    productState.error?.status === 404 ||
+    productState.error?.code === 'PRODUCT_NOT_FOUND' ||
+    (!product && !productState.loading && !productState.error)
+  ) {
+    return <ProductNotFound />;
+  }
+
+  // If network or server error
+  if (productState.error) {
+    return (
+      <div className="bg-[#f8f8f6] min-h-screen py-16">
+        <div className="max-w-xl mx-auto px-4 text-center">
+          <div className="bg-white border border-[#fecaca] p-8 sm:p-12 rounded-xs">
+            <div className="w-12 h-12 mx-auto mb-4 text-[#dc2626]">
+              <svg className="w-full h-full" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <h2 className="text-lg font-bold text-[#121212] mb-1.5">
+              Không thể tải thông tin sản phẩm
+            </h2>
+            <p className="text-xs text-[#737373] mb-6">
+              {productState.error.message || 'Đã có lỗi xảy ra khi tải dữ liệu từ máy chủ.'}
+            </p>
+            <div className="flex items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={loadProduct}
+                className="px-6 py-2.5 bg-[#121212] hover:bg-[#262626] text-white text-xs font-bold uppercase tracking-wider rounded-xs transition-colors cursor-pointer"
+              >
+                Thử lại
+              </button>
+              <Link
+                to="/products"
+                className="px-6 py-2.5 bg-white border border-[#e5e5e0] hover:border-[#121212] text-xs font-bold uppercase tracking-wider text-[#121212] rounded-xs transition-colors"
+              >
+                Về danh mục
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!product || !activeColorway) {
     return <ProductNotFound />;
   }
 
   // Selected variant derivation
   const selectedVariant = selectedSize
-    ? activeColorway.variants.find((v) => v.size === selectedSize)
+    ? activeColorway.variants?.find((v) => v.size === selectedSize)
     : null;
   const isOutOfStock = selectedVariant ? selectedVariant.stock === 0 : false;
   const isAddDisabled = !selectedSize || isOutOfStock;
@@ -108,7 +213,7 @@ function ProductDetailPage() {
       {
         productSlug: product.slug,
         productName: product.name,
-        brandName: product.brand.name,
+        brandName: product.brand?.name || '',
         colorwaySlug: activeColorway.slug,
         colorwayName: activeColorway.name,
         size: selectedSize,
@@ -139,6 +244,10 @@ function ProductDetailPage() {
     ? Math.round(((activeColorway.price - activeColorway.salePrice) / activeColorway.price) * 100)
     : 0;
 
+  const categoryNamesDisplay = product.categoryNames?.length > 0
+    ? product.categoryNames.join(' / ')
+    : '';
+
   return (
     <div className="bg-[#f8f8f6] min-h-screen py-6 sm:py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -156,10 +265,10 @@ function ProductDetailPage() {
           </Link>
           <span>/</span>
           <Link
-            to={`/products?brand=${product.brand.slug}`}
+            to={`/products?brand=${product.brand?.slug}`}
             className="hover:text-[#121212] transition-colors"
           >
-            {product.brand.name}
+            {product.brand?.name}
           </Link>
           <span>/</span>
           <span className="text-[#121212]">{product.name}</span>
@@ -170,7 +279,7 @@ function ProductDetailPage() {
           {/* Left Column: Product Gallery */}
           <div className="lg:col-span-7">
             <ProductGallery
-              images={activeColorway.images}
+              images={activeColorway.images || []}
               productName={product.name}
               colorwayName={activeColorway.name}
               activeImageIndex={activeImageIndex}
@@ -184,15 +293,19 @@ function ProductDetailPage() {
             <div className="border-b border-[#e5e5e0] pb-5">
               <div className="flex items-center gap-2 mb-1.5">
                 <Link
-                  to={`/products?brand=${product.brand.slug}`}
+                  to={`/products?brand=${product.brand?.slug}`}
                   className="text-xs font-extrabold uppercase tracking-widest text-[#737373] hover:text-[#121212] transition-colors"
                 >
-                  {product.brand.name}
+                  {product.brand?.name}
                 </Link>
-                <span className="text-[#d4d4cb]">•</span>
-                <span className="text-xs font-semibold text-[#737373] uppercase tracking-wider">
-                  {product.categories.join(' / ')}
-                </span>
+                {categoryNamesDisplay && (
+                  <>
+                    <span className="text-[#d4d4cb]">•</span>
+                    <span className="text-xs font-semibold text-[#737373] uppercase tracking-wider">
+                      {categoryNamesDisplay}
+                    </span>
+                  </>
+                )}
               </div>
 
               <h1 className="text-2xl sm:text-3xl font-extrabold uppercase tracking-tight text-[#121212]">
@@ -223,14 +336,14 @@ function ProductDetailPage() {
 
             {/* Colorway Selector */}
             <ColorwaySelector
-              colorways={product.colorways}
+              colorways={product.colorways || []}
               selectedColorwaySlug={activeColorway.slug}
               onSelectColorway={handleSelectColorway}
             />
 
             {/* Size Selector */}
             <SizeSelector
-              variants={activeColorway.variants}
+              variants={activeColorway.variants || []}
               selectedSize={selectedSize}
               onSelectSize={handleSelectSize}
               onOpenSizeGuide={() => setIsSizeGuideOpen(true)}
@@ -284,22 +397,24 @@ function ProductDetailPage() {
               </h2>
 
               <p className="text-xs text-[#525252] leading-relaxed">
-                {product.name} là mẫu giày của {product.brand.name} trong danh mục{' '}
-                {product.categories.join(' / ')} tại STEP/LAB.
+                {product.name} là mẫu giày của {product.brand?.name}
+                {categoryNamesDisplay ? ` trong danh mục ${categoryNamesDisplay}` : ''} tại STEP/LAB.
               </p>
 
               {/* Factual Spec Sheet */}
               <div className="bg-white border border-[#e5e5e0] p-4 rounded-xs text-xs space-y-2">
                 <div className="flex justify-between py-1 border-b border-[#f5f5f3]">
                   <span className="text-[#737373]">Thương hiệu:</span>
-                  <span className="font-semibold text-[#121212]">{product.brand.name}</span>
+                  <span className="font-semibold text-[#121212]">{product.brand?.name}</span>
                 </div>
-                <div className="flex justify-between py-1 border-b border-[#f5f5f3]">
-                  <span className="text-[#737373]">Danh mục:</span>
-                  <span className="font-semibold text-[#121212] capitalize">
-                    {product.categories.join(', ')}
-                  </span>
-                </div>
+                {categoryNamesDisplay && (
+                  <div className="flex justify-between py-1 border-b border-[#f5f5f3]">
+                    <span className="text-[#737373]">Danh mục:</span>
+                    <span className="font-semibold text-[#121212] capitalize">
+                      {categoryNamesDisplay}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between py-1 border-b border-[#f5f5f3]">
                   <span className="text-[#737373]">Phối màu:</span>
                   <span className="font-semibold text-[#121212]">{activeColorway.name}</span>
