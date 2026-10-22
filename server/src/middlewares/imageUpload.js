@@ -2,13 +2,13 @@ import multer from 'multer';
 import { MAX_IMAGE_BYTES } from '../config/uploads.js';
 import { AppError } from '../utils/errors.js';
 
-const acceptedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const acceptedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/avif']);
 const parser = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_IMAGE_BYTES, files: 1, fields: 4 },
   fileFilter(req, file, callback) {
     if (!acceptedMimeTypes.has(file.mimetype)) {
-      callback(new AppError('Only JPEG, PNG and WebP images are supported.', 415, 'INVALID_IMAGE_TYPE'));
+      callback(new AppError('Only JPEG, PNG, WebP and AVIF images are supported.', 415, 'INVALID_IMAGE_TYPE'));
       return;
     }
     callback(null, true);

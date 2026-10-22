@@ -68,8 +68,16 @@ export default function AdminSidebar({ onClose }) {
       {/* Brand Header */}
       <div className="flex items-center justify-between border-b border-[#262626] px-6 py-5">
         <div>
-          <span className="text-lg font-black uppercase tracking-widest text-white">STEP/LAB</span>
-          <div className="mt-1 inline-block border border-[#991b1b] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-[#f87171]">
+          <Link
+            to="/admin/products"
+            className="group inline-flex items-baseline gap-0.5 focus-visible:outline-2 focus-visible:outline-[#991b1b] focus-visible:outline-offset-2 rounded-xs"
+            aria-label="STEP/LAB Administration"
+          >
+            <span className="font-['Space_Grotesk'] text-xl font-extrabold tracking-tighter text-white">
+              STEP<span className="text-[#991b1b]">/</span>LAB
+            </span>
+          </Link>
+          <div className="mt-1 block border border-[#991b1b] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-[#f87171] w-fit">
             Administration
           </div>
         </div>

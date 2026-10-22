@@ -87,11 +87,33 @@ test('Image signatures must agree with their declared MIME type', () => {
   const jpeg = { mimetype: 'image/jpeg', buffer: Buffer.from([0xff, 0xd8, 0xff, 0x00]) };
   const png = { mimetype: 'image/png', buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]) };
   const webp = { mimetype: 'image/webp', buffer: Buffer.from('RIFF0000WEBP') };
+  const avifBuffer = Buffer.alloc(24);
+  avifBuffer.writeUInt32BE(24, 0);
+  avifBuffer.write('ftyp', 4, 'ascii');
+  avifBuffer.write('mif1', 8, 'ascii');
+  avifBuffer.write('miaf', 16, 'ascii');
+  avifBuffer.write('avif', 20, 'ascii');
+  const avif = { mimetype: 'image/avif', buffer: avifBuffer };
+  const nonAvifBmff = Buffer.from(avifBuffer);
+  nonAvifBmff.write('heic', 20, 'ascii');
   assert.equal(validateImageFile(jpeg), 'jpg');
   assert.equal(validateImageFile(png), 'png');
   assert.equal(validateImageFile(webp), 'webp');
+  assert.equal(validateImageFile(avif), 'avif');
   assert.throws(
     () => validateImageFile({ mimetype: 'image/png', buffer: jpeg.buffer }),
+    (error) => error.code === 'INVALID_IMAGE_TYPE'
+  );
+  assert.throws(
+    () => validateImageFile({ mimetype: 'image/avif', buffer: png.buffer }),
+    (error) => error.code === 'INVALID_IMAGE_TYPE'
+  );
+  assert.throws(
+    () => validateImageFile({ mimetype: 'image/png', buffer: avif.buffer }),
+    (error) => error.code === 'INVALID_IMAGE_TYPE'
+  );
+  assert.throws(
+    () => validateImageFile({ mimetype: 'image/avif', buffer: nonAvifBmff }),
     (error) => error.code === 'INVALID_IMAGE_TYPE'
   );
   assert.equal(managedPathFromUrl('/images/products/seeded.webp'), null);
@@ -99,5 +121,9 @@ test('Image signatures must agree with their declared MIME type', () => {
   assert.match(
     managedPathFromUrl('/api/uploads/products/123e4567-e89b-42d3-a456-426614174000.webp'),
     /uploads[\\/]products[\\/]123e4567/
+  );
+  assert.match(
+    managedPathFromUrl('/api/uploads/brands/123e4567-e89b-42d3-a456-426614174000.avif'),
+    /uploads[\\/]brands[\\/]123e4567/
   );
 });

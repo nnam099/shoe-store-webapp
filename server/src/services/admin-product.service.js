@@ -143,7 +143,7 @@ export function getAdminCatalogMeta() {
   return {
     colorFamilies: CATALOG_COLOR_FAMILIES,
     imageRules: {
-      fieldName: 'image', formats: ['image/jpeg', 'image/png', 'image/webp'],
+      fieldName: 'image', formats: ['image/jpeg', 'image/png', 'image/webp', 'image/avif'],
       maxBytes: 8 * 1024 * 1024, minPerPublishableColorway: COLORWAY_MIN_IMAGES,
       maxPerColorway: COLORWAY_MAX_IMAGES,
     },

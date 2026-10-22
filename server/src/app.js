@@ -17,6 +17,11 @@ app.use('/api/uploads', express.static(MANAGED_UPLOAD_ROOT, {
   dotfiles: 'deny',
   index: false,
   maxAge: '1d',
+  setHeaders(res, filePath) {
+    if (filePath.toLowerCase().endsWith('.avif')) {
+      res.setHeader('Content-Type', 'image/avif');
+    }
+  },
 }));
 
 // API routes

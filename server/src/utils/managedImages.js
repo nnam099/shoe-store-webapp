@@ -8,6 +8,39 @@ import {
 } from '../config/uploads.js';
 import { AppError } from './errors.js';
 
+const AVIF_BRANDS = new Set(['avif', 'avis']);
+
+function hasAvifFileTypeBox(buffer) {
+  if (buffer.length < 16 || buffer.subarray(4, 8).toString('ascii') !== 'ftyp') return false;
+
+  const boxSize = buffer.readUInt32BE(0);
+  let brandsOffset = 8;
+  let boxEnd;
+
+  if (boxSize === 0) {
+    boxEnd = buffer.length;
+  } else if (boxSize === 1) {
+    if (buffer.length < 24) return false;
+    const largeBoxSize = buffer.readBigUInt64BE(8);
+    if (largeBoxSize > BigInt(buffer.length) || largeBoxSize < 24n) return false;
+    brandsOffset = 16;
+    boxEnd = Number(largeBoxSize);
+  } else {
+    if (boxSize < 16 || boxSize > buffer.length) return false;
+    boxEnd = boxSize;
+  }
+
+  if (boxEnd - brandsOffset < 8) return false;
+  if (AVIF_BRANDS.has(buffer.subarray(brandsOffset, brandsOffset + 4).toString('ascii'))) {
+    return true;
+  }
+
+  for (let offset = brandsOffset + 8; offset + 4 <= boxEnd; offset += 4) {
+    if (AVIF_BRANDS.has(buffer.subarray(offset, offset + 4).toString('ascii'))) return true;
+  }
+  return false;
+}
+
 function detectImageExtension(buffer) {
   if (!Buffer.isBuffer(buffer)) return null;
   if (buffer.length >= 4 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
@@ -22,6 +55,7 @@ function detectImageExtension(buffer) {
     && buffer.subarray(0, 4).toString('ascii') === 'RIFF'
     && buffer.subarray(8, 12).toString('ascii') === 'WEBP'
   ) return 'webp';
+  if (hasAvifFileTypeBox(buffer)) return 'avif';
   return null;
 }
 
@@ -50,7 +84,7 @@ export async function saveManagedImage(file, kind) {
 
 export function managedPathFromUrl(imageUrl) {
   const managedPattern = new RegExp(
-    `^${MANAGED_UPLOAD_PUBLIC_PREFIX}/(brands|products)/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\.(?:jpg|png|webp)$`
+    `^${MANAGED_UPLOAD_PUBLIC_PREFIX}/(brands|products)/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\.(?:jpg|png|webp|avif)$`
   );
   if (typeof imageUrl !== 'string' || !managedPattern.test(imageUrl)) {
     return null;

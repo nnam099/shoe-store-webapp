@@ -48,7 +48,9 @@ export default function AdminLoginPage() {
       <div className="w-full max-w-sm">
         {/* Brand */}
         <div className="mb-10 text-center">
-          <h1 className="text-3xl font-black uppercase tracking-widest text-white">STEP/LAB</h1>
+          <h1 className="font-['Space_Grotesk'] text-3xl font-extrabold tracking-tighter text-white">
+            STEP<span className="text-[#991b1b]">/</span>LAB
+          </h1>
           <div className="mt-2 inline-block border border-[#991b1b] px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-[#f87171]">
             Administration Portal
           </div>

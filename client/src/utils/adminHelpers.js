@@ -20,7 +20,7 @@ const ERROR_MESSAGES = {
   STOCK_CONFLICT: 'Số lượng tồn kho trên máy chủ vừa thay đổi. Dữ liệu đã được làm mới, vui lòng thử lại.',
   IMAGE_LIMIT_REACHED: 'Mỗi phối màu chỉ hỗ trợ tối đa 4 ảnh.',
   IMAGE_TOO_LARGE: 'Dung lượng ảnh vượt quá giới hạn cho phép (tối đa 8 MB).',
-  INVALID_IMAGE_TYPE: 'Chỉ hỗ trợ tệp hình ảnh định dạng JPEG, PNG hoặc WebP.',
+  INVALID_IMAGE_TYPE: 'Chỉ hỗ trợ tệp hình ảnh định dạng JPEG, PNG, WebP hoặc AVIF.',
   SELF_MANAGEMENT_NOT_ALLOWED: 'Không thể tự vô hiệu hóa, tự xóa hoặc tự reset mật khẩu của tài khoản đang đăng nhập.',
   LAST_ACTIVE_ADMIN: 'Hệ thống phải duy trì ít nhất một tài khoản Quản trị viên hoạt động.',
   ADMIN_ACCOUNT_EXISTS: 'Email quản trị đã tồn tại. Vui lòng dùng email khác.',

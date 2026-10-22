@@ -9,7 +9,7 @@ import { getAssetUrl } from '../../../config/site';
 
 const MAX_IMAGES = 4;
 const MAX_BYTES = 8 * 1024 * 1024;
-const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
 
 /**
  * ColorwayImageManager — Upload, reorder, delete images and select thumbnail for a colorway.
@@ -49,7 +49,7 @@ export default function ColorwayImageManager({
     e.target.value = '';
     if (!file) return;
     if (!ACCEPTED_TYPES.includes(file.type)) {
-      notifyError('Chỉ hỗ trợ tệp định dạng JPEG, PNG hoặc WebP.');
+      notifyError('Chỉ hỗ trợ tệp định dạng JPEG, PNG, WebP hoặc AVIF.');
       return;
     }
     if (file.size > MAX_BYTES) {
@@ -270,12 +270,12 @@ export default function ColorwayImageManager({
                 <span className="text-[10px] font-medium text-[#71717a] text-center px-1">
                   Thêm ảnh ({images.length}/{MAX_IMAGES})
                 </span>
-                <span className="text-[9px] text-[#a1a1aa]">Tối đa 8MB</span>
+                <span className="text-[9px] text-[#a1a1aa]">JPEG, PNG, WebP, AVIF (Tối đa 8MB)</span>
               </>
             )}
             <input
               type="file"
-              accept="image/jpeg,image/png,image/webp"
+              accept="image/jpeg,image/png,image/webp,image/avif"
               className="hidden"
               onChange={handleFileChange}
               disabled={isUploading}
