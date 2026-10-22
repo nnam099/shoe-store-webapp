@@ -5,7 +5,6 @@ import {
   CATALOG_DEFAULT_PAGE,
   CATALOG_MAX_LIMIT,
   CATALOG_SORTS,
-  COLORWAY_FAMILIES_BY_SLUG,
 } from '../config/catalog.js';
 import { AppError } from '../utils/errors.js';
 
@@ -61,6 +60,7 @@ const publicProductSelect = {
       slug: true,
       price: true,
       salePrice: true,
+      colorFamilies: true,
       isDefault: true,
       images: {
         orderBy: [{ displayOrder: 'asc' }, { id: 'asc' }],
@@ -220,9 +220,7 @@ function getThumbnail(colorway) {
 }
 
 function colorwayMatchesColors(colorway, selectedColors) {
-  const families = COLORWAY_FAMILIES_BY_SLUG[colorway.slug];
-  return Array.isArray(families)
-    && selectedColors.some((selectedColor) => families.includes(selectedColor));
+  return selectedColors.some((selectedColor) => colorway.colorFamilies.includes(selectedColor));
 }
 
 function colorwayHasAvailableSize(colorway, selectedSizes) {
@@ -419,8 +417,7 @@ export async function getCatalogOptions() {
       categoryCounts.set(category.id, (categoryCounts.get(category.id) ?? 0) + 1);
     }
     for (const colorway of product.colorways) {
-      const families = COLORWAY_FAMILIES_BY_SLUG[colorway.slug];
-      if (families) families.forEach((family) => presentColorFamilies.add(family));
+      colorway.colorFamilies.forEach((family) => presentColorFamilies.add(family));
       colorway.variants.forEach((variant) => sizes.add(variant.size));
     }
     const defaultColorway = getDefaultColorway(product);

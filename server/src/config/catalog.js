@@ -23,10 +23,9 @@ export const CATALOG_COLOR_FAMILIES = Object.freeze([
   { slug: 'brown-beige', name: 'Nâu / Be' },
 ]);
 
-// The current catalog has no persisted color-family field. This mapping is
-// intentionally limited to the verified Colorway slugs in the approved seed.
-// Unknown or future Admin-created Colorways must not be guessed here.
-export const COLORWAY_FAMILIES_BY_SLUG = Object.freeze({
+// Used only by the immutable catalog seed. Runtime storefront filtering reads
+// Colorway.colorFamilies from PostgreSQL and never guesses from a slug.
+export const CATALOG_SEED_COLOR_FAMILIES_BY_SLUG = Object.freeze({
   beige: ['brown-beige', 'white'],
   black: ['black'],
   'black-grey': ['black', 'grey'],

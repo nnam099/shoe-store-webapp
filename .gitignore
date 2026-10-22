@@ -24,3 +24,7 @@ Thumbs.db
 # temporary files
 tmp/
 temp/
+
+# runtime-managed uploads
+server/uploads/*
+!server/uploads/.gitkeep

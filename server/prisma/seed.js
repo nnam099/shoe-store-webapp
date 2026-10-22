@@ -1,4 +1,5 @@
 import prisma from '../src/config/db.js';
+import { CATALOG_SEED_COLOR_FAMILIES_BY_SLUG } from '../src/config/catalog.js';
 import { products } from '../../client/src/data/catalog.js';
 
 /**
@@ -119,6 +120,10 @@ export async function seedCatalog() {
     const sortedColorways = [...p.colorways].sort((a, b) => (a.isDefault ? 1 : 0) - (b.isDefault ? 1 : 0));
 
     for (const cw of sortedColorways) {
+      const colorFamilies = CATALOG_SEED_COLOR_FAMILIES_BY_SLUG[cw.slug];
+      if (!colorFamilies) {
+        throw new Error(`Color families not configured for seeded Colorway slug: ${cw.slug}`);
+      }
       // Upsert Colorway
       const colorway = await prisma.colorway.upsert({
         where: {
@@ -131,6 +136,7 @@ export async function seedCatalog() {
           name: cw.name,
           price: cw.price,
           salePrice: cw.salePrice,
+          colorFamilies,
           isDefault: cw.isDefault,
           isActive: true,
         },
@@ -140,6 +146,7 @@ export async function seedCatalog() {
           slug: cw.slug,
           price: cw.price,
           salePrice: cw.salePrice,
+          colorFamilies,
           isDefault: cw.isDefault,
           isActive: true,
         },

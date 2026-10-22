@@ -3,6 +3,7 @@ import http from 'node:http';
 import { after, before, test } from 'node:test';
 import app from '../src/app.js';
 import prisma from '../src/config/db.js';
+import { CATALOG_SEED_COLOR_FAMILIES_BY_SLUG } from '../src/config/catalog.js';
 
 const RUN_ID = `${process.pid}-${Date.now()}`;
 const PREFIX = 'catalog-api-test';
@@ -92,6 +93,9 @@ async function createProduct({
           name: colorway.name,
           price: colorway.price,
           salePrice: colorway.salePrice ?? null,
+          colorFamilies: colorway.colorFamilies
+            ?? CATALOG_SEED_COLOR_FAMILIES_BY_SLUG[colorway.slug]
+            ?? [],
           isDefault: colorway.isDefault,
           isActive: colorway.isActive ?? true,
           images: {

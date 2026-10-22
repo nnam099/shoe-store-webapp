@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import HomePage from './pages/HomePage';
@@ -19,6 +19,17 @@ import MemberOrderDetailPage from './pages/MemberOrderDetailPage';
 import MemberReviewsPage from './pages/MemberReviewsPage';
 import RequireMember from './components/auth/RequireMember';
 import { AuthProvider } from './context/AuthContext';
+
+// Admin Imports
+import { AdminProvider } from './context/AdminContext';
+import RequireAdmin from './components/admin/layout/RequireAdmin';
+import AdminLoginPage from './pages/admin/AdminLoginPage';
+import AdminProductsPage from './pages/admin/AdminProductsPage';
+import AdminProductCreatePage from './pages/admin/AdminProductCreatePage';
+import AdminProductDetailPage from './pages/admin/AdminProductDetailPage';
+import AdminBrandsPage from './pages/admin/AdminBrandsPage';
+import AdminCategoriesPage from './pages/admin/AdminCategoriesPage';
+import AdminAccountsPage from './pages/admin/AdminAccountsPage';
 
 /**
  * ScrollToTop Component
@@ -41,74 +52,142 @@ function ScrollToTop() {
   return null;
 }
 
+function AppContent() {
+  const location = useLocation();
+  const isAdmin = location.pathname.startsWith('/admin');
+
+  if (isAdmin) {
+    return (
+      <Routes>
+        <Route path="/admin/login" element={<AdminLoginPage />} />
+        <Route path="/admin" element={<Navigate to="/admin/products" replace />} />
+        <Route
+          path="/admin/products"
+          element={(
+            <RequireAdmin>
+              <AdminProductsPage />
+            </RequireAdmin>
+          )}
+        />
+        <Route
+          path="/admin/products/new"
+          element={(
+            <RequireAdmin>
+              <AdminProductCreatePage />
+            </RequireAdmin>
+          )}
+        />
+        <Route
+          path="/admin/products/:productId"
+          element={(
+            <RequireAdmin>
+              <AdminProductDetailPage />
+            </RequireAdmin>
+          )}
+        />
+        <Route
+          path="/admin/brands"
+          element={(
+            <RequireAdmin>
+              <AdminBrandsPage />
+            </RequireAdmin>
+          )}
+        />
+        <Route
+          path="/admin/categories"
+          element={(
+            <RequireAdmin>
+              <AdminCategoriesPage />
+            </RequireAdmin>
+          )}
+        />
+        <Route
+          path="/admin/accounts"
+          element={(
+            <RequireAdmin>
+              <AdminAccountsPage />
+            </RequireAdmin>
+          )}
+        />
+      </Routes>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col bg-[#f8f8f6] text-[#121212] overflow-x-hidden">
+      {/* Top Header */}
+      <Header />
+
+      {/* Routed Content Area */}
+      <main className="flex-1">
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/products" element={<ProductsPage />} />
+          <Route path="/products/:slug" element={<ProductDetailPage />} />
+          <Route path="/cart" element={<CartPage />} />
+          <Route path="/checkout" element={<CheckoutPage />} />
+          <Route path="/order-success/:orderCode" element={<OrderSuccessPage />} />
+          <Route path="/order-lookup" element={<OrderLookupPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route
+            path="/account"
+            element={(
+              <RequireMember>
+                <AccountPage />
+              </RequireMember>
+            )}
+          />
+          <Route
+            path="/account/change-password"
+            element={(
+              <RequireMember>
+                <ChangePasswordPage />
+              </RequireMember>
+            )}
+          />
+          <Route
+            path="/account/orders"
+            element={(
+              <RequireMember>
+                <MemberOrdersPage />
+              </RequireMember>
+            )}
+          />
+          <Route
+            path="/account/orders/:orderCode"
+            element={(
+              <RequireMember>
+                <MemberOrderDetailPage />
+              </RequireMember>
+            )}
+          />
+          <Route
+            path="/account/reviews"
+            element={(
+              <RequireMember>
+                <MemberReviewsPage />
+              </RequireMember>
+            )}
+          />
+        </Routes>
+      </main>
+
+      {/* Storefront Footer */}
+      <Footer />
+    </div>
+  );
+}
+
 function App() {
   return (
     <BrowserRouter basename={import.meta.env.BASE_URL}>
       <AuthProvider>
-        <ScrollToTop />
-        <div className="min-h-screen flex flex-col bg-[#f8f8f6] text-[#121212] overflow-x-hidden">
-          {/* Top Header */}
-          <Header />
-
-          {/* Routed Content Area */}
-          <main className="flex-1">
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/products" element={<ProductsPage />} />
-              <Route path="/products/:slug" element={<ProductDetailPage />} />
-              <Route path="/cart" element={<CartPage />} />
-              <Route path="/checkout" element={<CheckoutPage />} />
-              <Route path="/order-success/:orderCode" element={<OrderSuccessPage />} />
-              <Route path="/order-lookup" element={<OrderLookupPage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-              <Route
-                path="/account"
-                element={(
-                  <RequireMember>
-                    <AccountPage />
-                  </RequireMember>
-                )}
-              />
-              <Route
-                path="/account/change-password"
-                element={(
-                  <RequireMember>
-                    <ChangePasswordPage />
-                  </RequireMember>
-                )}
-              />
-              <Route
-                path="/account/orders"
-                element={(
-                  <RequireMember>
-                    <MemberOrdersPage />
-                  </RequireMember>
-                )}
-              />
-              <Route
-                path="/account/orders/:orderCode"
-                element={(
-                  <RequireMember>
-                    <MemberOrderDetailPage />
-                  </RequireMember>
-                )}
-              />
-              <Route
-                path="/account/reviews"
-                element={(
-                  <RequireMember>
-                    <MemberReviewsPage />
-                  </RequireMember>
-                )}
-              />
-            </Routes>
-          </main>
-
-          {/* Storefront Footer */}
-          <Footer />
-        </div>
+        <AdminProvider>
+          <ScrollToTop />
+          <AppContent />
+        </AdminProvider>
       </AuthProvider>
     </BrowserRouter>
   );
