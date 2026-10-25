@@ -13,6 +13,18 @@ import {
   listProducts, reorderColorwayImages, setDefaultColorway, updateColorway,
   updateProduct, updateVariant, updateVariantStock, uploadColorwayImage,
 } from '../services/admin-product.service.js';
+import {
+  getAdminOrder, listAdminOrders, updateAdminOrderStatus,
+} from '../services/admin-order.service.js';
+import {
+  getAdminCustomer, listAdminCustomerOrders, listAdminCustomers,
+} from '../services/admin-customer.service.js';
+import {
+  deleteAdminReview, getAdminReview, listAdminReviews,
+} from '../services/admin-review.service.js';
+import {
+  getAdminDashboardSummary, getAdminRevenueChart,
+} from '../services/admin-dashboard.service.js';
 
 function action(fn, { status = 200, key = null } = {}) {
   return async (req, res, next) => {
@@ -71,3 +83,18 @@ export const adminVariantCreate = action((req) => createVariant(req.params.color
 export const adminVariantUpdate = action((req) => updateVariant(req.params.variantId, req.body || {}), { key: 'variant' });
 export const adminVariantStock = action((req) => updateVariantStock(req.params.variantId, req.body || {}), { key: 'variant' });
 export const adminVariantDelete = action((req) => deleteVariant(req.params.variantId));
+
+export const adminOrderList = action((req) => listAdminOrders(req.query));
+export const adminOrderDetail = action((req) => getAdminOrder(req.params.orderCode), { key: 'order' });
+export const adminOrderStatusUpdate = action((req) => updateAdminOrderStatus(req.params.orderCode, req.body || {}), { key: 'order' });
+
+export const adminCustomerList = action((req) => listAdminCustomers(req.query));
+export const adminCustomerDetail = action((req) => getAdminCustomer(req.params.customerId));
+export const adminCustomerOrderList = action((req) => listAdminCustomerOrders(req.params.customerId, req.query));
+
+export const adminReviewList = action((req) => listAdminReviews(req.query));
+export const adminReviewDetail = action((req) => getAdminReview(req.params.reviewId), { key: 'review' });
+export const adminReviewDelete = action((req) => deleteAdminReview(req.params.reviewId));
+
+export const adminDashboardSummary = action(() => getAdminDashboardSummary());
+export const adminDashboardRevenue = action((req) => getAdminRevenueChart(req.query));

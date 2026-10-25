@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs';
 import app from '../src/app.js';
 import prisma from '../src/config/db.js';
 import { issueMemberToken } from '../src/utils/memberToken.js';
+import { assertIsolatedTestDatabase } from './testDatabaseGuard.js';
 
 const TEST_EMAILS = [
   'm9a.review.a@example.test',
@@ -24,6 +25,7 @@ let members;
 let products;
 let originalCatalogState;
 let orderSequence = 0;
+let isolationGuardPassed = false;
 
 async function counts() {
   const [users, orders, orderItems, orderStatusHistories, reviews] = await Promise.all([
@@ -96,6 +98,8 @@ function assertNoForbiddenKeys(value, forbiddenKeys) {
 }
 
 before(async () => {
+  await assertIsolatedTestDatabase(prisma);
+  isolationGuardPassed = true;
   baselineCounts = await counts();
 
   const constraints = await prisma.$queryRawUnsafe(
@@ -160,6 +164,10 @@ before(async () => {
 });
 
 after(async () => {
+  if (!isolationGuardPassed) {
+    await prisma.$disconnect();
+    return;
+  }
   if (originalCatalogState) {
     await Promise.all([
       prisma.$executeRawUnsafe(

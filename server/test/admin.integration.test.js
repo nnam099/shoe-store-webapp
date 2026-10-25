@@ -4,6 +4,7 @@ import { once } from 'node:events';
 import app from '../src/app.js';
 import prisma from '../src/config/db.js';
 import { hashPassword } from '../src/utils/password.js';
+import { assertIsolatedTestDatabase } from './testDatabaseGuard.js';
 
 process.env.JWT_ADMIN_SECRET ||= 'admin-integration-secret-with-at-least-32-characters';
 process.env.JWT_ADMIN_EXPIRES_IN = '8h';
@@ -16,6 +17,7 @@ let server;
 let baseUrl;
 let adminId;
 let token;
+let isolationGuardPassed = false;
 const created = { brandId: null, categoryId: null, productId: null };
 
 async function api(path, { method = 'GET', body, auth = token, form } = {}) {
@@ -31,10 +33,8 @@ async function api(path, { method = 'GET', body, auth = token, form } = {}) {
 }
 
 before(async () => {
-  const rows = await prisma.$queryRaw`SELECT current_database() AS database`;
-  const database = rows[0]?.database;
-  assert.notEqual(database, 'shoe_store_dev', 'Admin integration tests refuse development DB');
-  assert.match(database, /test/i, 'Admin integration tests require an isolated test database');
+  await assertIsolatedTestDatabase(prisma);
+  isolationGuardPassed = true;
 
   const admin = await prisma.adminAccount.create({
     data: { email, fullName: 'Admin Integration Test', passwordHash: await hashPassword(password), isActive: true },
@@ -46,6 +46,10 @@ before(async () => {
 });
 
 after(async () => {
+  if (!isolationGuardPassed) {
+    await prisma.$disconnect();
+    return;
+  }
   if (created.productId) {
     const product = await prisma.product.findUnique({ where: { id: created.productId }, include: { colorways: { include: { variants: true } } } });
     if (product) {

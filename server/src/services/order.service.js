@@ -736,7 +736,7 @@ export async function getOrderForMember({ memberId, orderCode }) {
   return serializeMemberOrderDetail(order);
 }
 
-async function cancelAuthorizedOrder(orderId) {
+export async function cancelAuthorizedOrder(orderId) {
   const now = new Date();
 
   return prisma.$transaction(async (tx) => {

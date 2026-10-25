@@ -7,6 +7,7 @@ import app from '../src/app.js';
 import prisma from '../src/config/db.js';
 import { getMemberAuthConfig } from '../src/config/memberAuth.js';
 import { derivePasswordVersion, issueMemberToken } from '../src/utils/memberToken.js';
+import { assertIsolatedTestDatabase } from './testDatabaseGuard.js';
 
 const TEST_EMAILS = [
   'm8c.integration.a@example.test',
@@ -20,6 +21,7 @@ let baseUrl;
 let baselineCounts;
 let variant;
 let variantStockBefore;
+let isolationGuardPassed = false;
 const createdOrderCodes = new Set();
 
 async function counts() {
@@ -88,6 +90,8 @@ function assertNoPrivateOrderFields(value) {
 }
 
 before(async () => {
+  await assertIsolatedTestDatabase(prisma);
+  isolationGuardPassed = true;
   baselineCounts = await counts();
 
   const candidates = await prisma.variant.findMany({
@@ -113,6 +117,10 @@ before(async () => {
 });
 
 after(async () => {
+  if (!isolationGuardPassed) {
+    await prisma.$disconnect();
+    return;
+  }
   for (const orderCode of createdOrderCodes) {
     const order = await prisma.order.findUnique({
       where: { orderCode },

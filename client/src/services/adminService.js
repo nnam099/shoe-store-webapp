@@ -19,6 +19,18 @@ function createAdminError(response, data) {
   return error;
 }
 
+const ADMIN_ORDER_SORTS = new Set(['newest', 'oldest', 'total-asc', 'total-desc']);
+const ADMIN_CUSTOMER_SORTS = new Set([
+  'newest',
+  'oldest',
+  'name-asc',
+  'name-desc',
+  'email-asc',
+  'email-desc',
+  'order-count-desc',
+]);
+const ADMIN_REVIEW_SORTS = new Set(['newest', 'oldest', 'rating-asc', 'rating-desc']);
+
 async function adminRequest(path, { method = 'GET', token, body, isMultipart = false } = {}) {
   const headers = {};
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -252,4 +264,93 @@ export function adminUpdateVariantStock(token, variantId, payload) {
 
 export function adminDeleteVariant(token, variantId) {
   return adminRequest(`/variants/${variantId}`, { method: 'DELETE', token });
+}
+
+// ─── Dashboard ────────────────────────────────────────────────────────────────
+
+export function adminGetDashboardSummary(token) {
+  return adminRequest('/dashboard/summary', { token });
+}
+
+export function adminGetDashboardRevenue(token, params = {}) {
+  const q = new URLSearchParams();
+  if (params.groupBy) q.set('groupBy', params.groupBy);
+  if (params.from) q.set('from', params.from);
+  if (params.to) q.set('to', params.to);
+  const qs = q.toString();
+  return adminRequest(`/dashboard/revenue${qs ? `?${qs}` : ''}`, { token });
+}
+
+// ─── Orders ───────────────────────────────────────────────────────────────────
+
+export function adminListOrders(token, params = {}) {
+  const q = new URLSearchParams();
+  if (params.page) q.set('page', String(params.page));
+  if (params.limit) q.set('limit', String(params.limit));
+  if (params.q) q.set('q', params.q);
+  if (params.status) q.set('status', params.status);
+  if (params.customerType) q.set('customerType', params.customerType);
+  if (params.from) q.set('from', params.from);
+  if (params.to) q.set('to', params.to);
+  if (ADMIN_ORDER_SORTS.has(params.sort)) q.set('sort', params.sort);
+  const qs = q.toString();
+  return adminRequest(`/orders${qs ? `?${qs}` : ''}`, { token });
+}
+
+export function adminGetOrder(token, orderCode) {
+  return adminRequest(`/orders/${orderCode}`, { token });
+}
+
+export function adminUpdateOrderStatus(token, orderCode, payload) {
+  return adminRequest(`/orders/${orderCode}/status`, { method: 'PATCH', token, body: payload });
+}
+
+// ─── Customers ────────────────────────────────────────────────────────────────
+
+export function adminListCustomers(token, params = {}) {
+  const q = new URLSearchParams();
+  if (params.page) q.set('page', String(params.page));
+  if (params.limit) q.set('limit', String(params.limit));
+  if (params.q) q.set('q', params.q);
+  if (params.hasOrders !== undefined && params.hasOrders !== '') q.set('hasOrders', String(params.hasOrders));
+  if (ADMIN_CUSTOMER_SORTS.has(params.sort)) q.set('sort', params.sort);
+  const qs = q.toString();
+  return adminRequest(`/customers${qs ? `?${qs}` : ''}`, { token });
+}
+
+export function adminGetCustomer(token, customerId) {
+  return adminRequest(`/customers/${customerId}`, { token });
+}
+
+export function adminListCustomerOrders(token, customerId, params = {}) {
+  const q = new URLSearchParams();
+  if (params.page) q.set('page', String(params.page));
+  if (params.limit) q.set('limit', String(params.limit));
+  if (params.status) q.set('status', params.status);
+  if (ADMIN_ORDER_SORTS.has(params.sort)) q.set('sort', params.sort);
+  const qs = q.toString();
+  return adminRequest(`/customers/${customerId}/orders${qs ? `?${qs}` : ''}`, { token });
+}
+
+// ─── Reviews ──────────────────────────────────────────────────────────────────
+
+export function adminListReviews(token, params = {}) {
+  const q = new URLSearchParams();
+  if (params.page) q.set('page', String(params.page));
+  if (params.limit) q.set('limit', String(params.limit));
+  if (params.q) q.set('q', params.q);
+  if (params.rating) q.set('rating', String(params.rating));
+  if (params.productId) q.set('productId', String(params.productId));
+  if (params.customerId) q.set('customerId', String(params.customerId));
+  if (ADMIN_REVIEW_SORTS.has(params.sort)) q.set('sort', params.sort);
+  const qs = q.toString();
+  return adminRequest(`/reviews${qs ? `?${qs}` : ''}`, { token });
+}
+
+export function adminGetReview(token, reviewId) {
+  return adminRequest(`/reviews/${reviewId}`, { token });
+}
+
+export function adminDeleteReview(token, reviewId) {
+  return adminRequest(`/reviews/${reviewId}`, { method: 'DELETE', token });
 }

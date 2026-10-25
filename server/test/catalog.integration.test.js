@@ -3,6 +3,7 @@ import http from 'node:http';
 import { after, before, test } from 'node:test';
 import app from '../src/app.js';
 import prisma from '../src/config/db.js';
+import { assertIsolatedTestDatabase } from './testDatabaseGuard.js';
 import { CATALOG_SEED_COLOR_FAMILIES_BY_SLUG } from '../src/config/catalog.js';
 
 const RUN_ID = `${process.pid}-${Date.now()}`;
@@ -127,11 +128,7 @@ function assertNoInternalIds(value) {
 }
 
 before(async () => {
-  const rows = await prisma.$queryRaw`SELECT current_database() AS database`;
-  const database = rows[0]?.database;
-  assert.equal(typeof database, 'string');
-  assert.notEqual(database, 'shoe_store_dev', 'Catalog integration tests refuse development DB');
-  assert.match(database, /test/i, 'Catalog integration tests require an isolated test database');
+  await assertIsolatedTestDatabase(prisma);
   isolationGuardPassed = true;
 
   await cleanupFixtures();

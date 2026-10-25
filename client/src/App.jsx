@@ -24,6 +24,12 @@ import { AuthProvider } from './context/AuthContext';
 import { AdminProvider } from './context/AdminContext';
 import RequireAdmin from './components/admin/layout/RequireAdmin';
 import AdminLoginPage from './pages/admin/AdminLoginPage';
+import AdminDashboardPage from './pages/admin/AdminDashboardPage';
+import AdminOrdersPage from './pages/admin/AdminOrdersPage';
+import AdminOrderDetailPage from './pages/admin/AdminOrderDetailPage';
+import AdminCustomersPage from './pages/admin/AdminCustomersPage';
+import AdminCustomerDetailPage from './pages/admin/AdminCustomerDetailPage';
+import AdminReviewsPage from './pages/admin/AdminReviewsPage';
 import AdminProductsPage from './pages/admin/AdminProductsPage';
 import AdminProductCreatePage from './pages/admin/AdminProductCreatePage';
 import AdminProductDetailPage from './pages/admin/AdminProductDetailPage';
@@ -60,7 +66,54 @@ function AppContent() {
     return (
       <Routes>
         <Route path="/admin/login" element={<AdminLoginPage />} />
-        <Route path="/admin" element={<Navigate to="/admin/products" replace />} />
+        <Route
+          path="/admin"
+          element={(
+            <RequireAdmin>
+              <AdminDashboardPage />
+            </RequireAdmin>
+          )}
+        />
+        <Route
+          path="/admin/orders"
+          element={(
+            <RequireAdmin>
+              <AdminOrdersPage />
+            </RequireAdmin>
+          )}
+        />
+        <Route
+          path="/admin/orders/:orderCode"
+          element={(
+            <RequireAdmin>
+              <AdminOrderDetailPage />
+            </RequireAdmin>
+          )}
+        />
+        <Route
+          path="/admin/customers"
+          element={(
+            <RequireAdmin>
+              <AdminCustomersPage />
+            </RequireAdmin>
+          )}
+        />
+        <Route
+          path="/admin/customers/:customerId"
+          element={(
+            <RequireAdmin>
+              <AdminCustomerDetailPage />
+            </RequireAdmin>
+          )}
+        />
+        <Route
+          path="/admin/reviews"
+          element={(
+            <RequireAdmin>
+              <AdminReviewsPage />
+            </RequireAdmin>
+          )}
+        />
         <Route
           path="/admin/products"
           element={(

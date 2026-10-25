@@ -54,4 +54,19 @@ router.patch('/admin/variants/:variantId', controller.adminVariantUpdate);
 router.patch('/admin/variants/:variantId/stock', controller.adminVariantStock);
 router.delete('/admin/variants/:variantId', controller.adminVariantDelete);
 
+router.get('/admin/orders', controller.adminOrderList);
+router.get('/admin/orders/:orderCode', controller.adminOrderDetail);
+router.patch('/admin/orders/:orderCode/status', controller.adminOrderStatusUpdate);
+
+router.get('/admin/customers', controller.adminCustomerList);
+router.get('/admin/customers/:customerId/orders', controller.adminCustomerOrderList);
+router.get('/admin/customers/:customerId', controller.adminCustomerDetail);
+
+router.get('/admin/reviews', controller.adminReviewList);
+router.get('/admin/reviews/:reviewId', controller.adminReviewDetail);
+router.delete('/admin/reviews/:reviewId', controller.adminReviewDelete);
+
+router.get('/admin/dashboard/summary', controller.adminDashboardSummary);
+router.get('/admin/dashboard/revenue', controller.adminDashboardRevenue);
+
 export default router;

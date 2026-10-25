@@ -8,7 +8,7 @@ export default function AdminLoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const from = location.state?.from || '/admin/products';
+  const from = location.state?.from || '/admin';
 
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');

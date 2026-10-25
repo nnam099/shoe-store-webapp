@@ -12,6 +12,7 @@ import {
 } from '../src/middlewares/memberAuth.js';
 import { cancelGuestOrder } from '../src/services/order.service.js';
 import { derivePasswordVersion } from '../src/utils/memberToken.js';
+import { assertIsolatedTestDatabase } from './testDatabaseGuard.js';
 
 const TEST_EMAIL = 'm8a.integration.member@example.test';
 const UNKNOWN_EMAIL = 'm8a.integration.unknown@example.test';
@@ -23,6 +24,7 @@ const RESET_PASSWORD = 'member-pass-8a-reset';
 let server;
 let baseUrl;
 let baselineCounts;
+let isolationGuardPassed = false;
 const createdOrderCodes = new Set();
 
 async function counts() {
@@ -82,6 +84,8 @@ function runMiddleware(middleware, authorization) {
 }
 
 before(async () => {
+  await assertIsolatedTestDatabase(prisma);
+  isolationGuardPassed = true;
   baselineCounts = await counts();
   server = http.createServer(app);
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -90,6 +94,10 @@ before(async () => {
 });
 
 after(async () => {
+  if (!isolationGuardPassed) {
+    await prisma.$disconnect();
+    return;
+  }
   for (const orderCode of createdOrderCodes) {
     const order = await prisma.order.findUnique({ where: { orderCode } });
     if (!order) continue;

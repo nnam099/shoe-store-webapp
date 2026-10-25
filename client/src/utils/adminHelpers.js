@@ -36,6 +36,11 @@ const ERROR_MESSAGES = {
   PASSWORD_CHANGE_FAILED: 'Không thể đổi mật khẩu. Vui lòng kiểm tra lại mật khẩu hiện tại.',
   VALIDATION_ERROR: 'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại các trường nhập liệu.',
   ADMIN_ACCOUNT_CONFLICT: 'Tài khoản quản trị vừa thay đổi. Vui lòng thử lại.',
+  ORDER_NOT_FOUND: 'Không tìm thấy đơn hàng.',
+  ORDER_STATUS_NOT_ALLOWED: 'Trạng thái đơn hàng không hợp lệ hoặc không thể chuyển đổi từ trạng thái hiện tại.',
+  ORDER_NOT_CANCELLABLE: 'Đơn hàng không thể hủy ở trạng thái hiện tại.',
+  CUSTOMER_NOT_FOUND: 'Không tìm thấy thông tin khách hàng.',
+  REVIEW_NOT_FOUND: 'Không tìm thấy đánh giá.',
 };
 
 export function adminErrorMessage(error) {
@@ -75,6 +80,22 @@ export function formatDate(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
   return new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date);
+}
+
+/**
+ * Formats a date & time string in Vietnamese locale (e.g. 14:30 24/10/2026).
+ */
+export function formatDateTime(value) {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return new Intl.DateTimeFormat('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(date);
 }
 
 /**

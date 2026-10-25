@@ -1,4 +1,5 @@
-import { formatPrice, getAssetUrl } from '../../config/site';
+import { formatPrice } from '../../config/site';
+import OrderItemThumbnail from './OrderItemThumbnail';
 
 export default function OrderItems({ items = [], compact = false }) {
   const snapshots = Array.isArray(items) ? items : [];
@@ -13,18 +14,12 @@ export default function OrderItems({ items = [], compact = false }) {
           <div
             className={`${compact ? 'h-12 w-12' : 'h-16 w-16 sm:h-20 sm:w-20'} shrink-0 overflow-hidden border border-[#ebebe8] bg-[#f8f8f6]`}
           >
-            {item.thumbnail ? (
-              <img
-                src={getAssetUrl(item.thumbnail)}
-                alt={`${item.productName} - ${item.colorwayName}`}
-                className="h-full w-full object-contain p-1"
-                loading="lazy"
-              />
-            ) : (
-              <span className="flex h-full items-center justify-center text-[9px] text-[#a3a3a3]">
-                STEP/LAB
-              </span>
-            )}
+            <OrderItemThumbnail
+              src={item.thumbnail}
+              alt={`${item.productName} - ${item.colorwayName}`}
+              imageClassName="h-full w-full object-contain p-1"
+              placeholderClassName="flex h-full items-center justify-center text-[9px] text-[#a3a3a3]"
+            />
           </div>
 
           <div className="min-w-0 flex-1">

@@ -1,4 +1,4 @@
-import { formatPrice, getAssetUrl } from '../../config/site';
+import { formatPrice } from '../../config/site';
 import {
   formatOrderDateTime,
   getOrderTotalLabel,
@@ -6,6 +6,7 @@ import {
   isCancelledOrder,
 } from '../../utils/orderPresentation';
 import OrderTimeline from './OrderTimeline';
+import OrderItemThumbnail from './OrderItemThumbnail';
 
 /**
  * OrderDetailCard Component
@@ -126,16 +127,12 @@ export default function OrderDetailCard({
             >
               {/* Thumbnail */}
               <div className="w-14 h-14 bg-[#f8f8f6] border border-[#ebebe8] rounded-xs shrink-0 flex items-center justify-center overflow-hidden">
-                {item.thumbnail ? (
-                  <img
-                    src={getAssetUrl(item.thumbnail)}
-                    alt={`${item.productName} - ${item.colorwayName}`}
-                    className="w-full h-full object-contain p-1"
-                    loading="lazy"
-                  />
-                ) : (
-                  <span className="text-[9px] text-[#a3a3a3]">STEP/LAB</span>
-                )}
+                <OrderItemThumbnail
+                  src={item.thumbnail}
+                  alt={`${item.productName} - ${item.colorwayName}`}
+                  imageClassName="w-full h-full object-contain p-1"
+                  placeholderClassName="flex h-full w-full items-center justify-center text-[9px] text-[#a3a3a3]"
+                />
               </div>
 
               {/* Item Info */}
