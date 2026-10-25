@@ -4,8 +4,8 @@ import { siteConfig } from '../../config/site';
 export default function Footer() {
   return (
     <footer className="bg-[#121212] text-neutral-300 border-t border-[#2a2a2a]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-12 pb-8 sm:pb-10 border-b border-[#2a2a2a]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-12">
           {/* Brand Manifesto & Info */}
           <div className="md:col-span-6 space-y-4">
             <a
@@ -66,12 +66,6 @@ export default function Footer() {
               Hỗ trợ giao hàng và thanh toán trực tiếp khi nhận hàng (COD) trên toàn quốc.
             </p>
           </div>
-        </div>
-
-        {/* Bottom Bar / Copyright */}
-        <div className="pt-6 sm:pt-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-mono text-neutral-500">
-          <p>{siteConfig.copyright}</p>
-          <p className="tracking-wider text-[11px] sm:text-xs">MULTI-BRAND FOOTWEAR STOREFRONT</p>
         </div>
       </div>
     </footer>

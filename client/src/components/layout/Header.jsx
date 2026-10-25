@@ -70,10 +70,6 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-40 w-full bg-[#f8f8f6]/95 backdrop-blur-md border-b border-[#e6e6e2] transition-colors">
-      <div className="bg-[#121212] text-neutral-300 text-[10px] sm:text-[11px] font-medium tracking-wider uppercase py-2 px-3 text-center border-b border-[#2a2a2a] select-none">
-        <p className="truncate">{siteConfig.announcement}</p>
-      </div>
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 sm:h-16 lg:h-20 flex items-center justify-between">
         <div className="flex items-center gap-8">
           <Link

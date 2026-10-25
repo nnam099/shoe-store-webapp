@@ -7,6 +7,7 @@ import {
   CATALOG_SORTS,
 } from '../config/catalog.js';
 import { AppError } from '../utils/errors.js';
+import { listCompletedProductSales } from './product-sales.service.js';
 
 const PRODUCT_SLUG_MAX_LENGTH = 200;
 const PRODUCT_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -475,6 +476,41 @@ export async function listCatalogProducts(rawQuery = {}) {
       totalItems,
       totalPages: Math.ceil(totalItems / filters.limit),
     },
+  };
+}
+
+export async function getCatalogBestSellers() {
+  const rankedSales = await listCompletedProductSales();
+  if (rankedSales.length === 0) return { products: [] };
+
+  const products = await prisma.product.findMany({
+    where: {
+      ...publicProductWhere,
+      id: { in: rankedSales.map((entry) => entry.productId) },
+    },
+    select: publicProductSelect,
+  });
+  const productById = new Map(products.map((product) => [product.id, product]));
+  const publicRanking = rankedSales
+    .map((entry) => ({ ...entry, product: productById.get(entry.productId) }))
+    .filter((entry) => entry.product)
+    .slice(0, 5);
+  const reviewSummaries = await loadReviewSummaries(
+    publicRanking.map((entry) => entry.product)
+  );
+
+  return {
+    products: publicRanking.map((entry, index) => {
+      const defaultColorway = getDefaultColorway(entry.product);
+      return {
+        ...serializeProductCard(
+          { product: entry.product, displayColorway: defaultColorway },
+          reviewSummaries
+        ),
+        quantitySold: entry.quantitySold,
+        rank: index + 1,
+      };
+    }),
   };
 }
 

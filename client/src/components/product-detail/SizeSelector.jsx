@@ -91,12 +91,14 @@ function SizeSelector({
         {selectedVariant ? (
           selectedVariant.stock === 0 ? (
             <p className="text-xs font-semibold text-[#a3a3a3]">Hết hàng</p>
-          ) : selectedVariant.stock <= 3 ? (
+          ) : selectedVariant.stock >= 1 && selectedVariant.stock <= 3 ? (
             <p className="text-xs font-bold text-[#b91c1c]">
               Chỉ còn {selectedVariant.stock} đôi
             </p>
           ) : (
-            <p className="text-xs font-medium text-[#16a34a]">Còn hàng</p>
+            <p className="text-xs font-medium text-[#16a34a]">
+              Còn {selectedVariant.stock} đôi
+            </p>
           )
         ) : (
           <p className="text-[11px] text-[#737373]">

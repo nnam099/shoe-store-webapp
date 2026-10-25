@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import HeroSlider from '../components/home/HeroSlider';
 import BrandLogos from '../components/home/BrandLogos';
-import ShopByCategory from '../components/home/ShopByCategory';
+import BestSellers from '../components/home/BestSellers';
+import CategoryNavigation from '../components/home/CategoryNavigation';
 import NewArrivals from '../components/home/NewArrivals';
 import FeaturedProducts from '../components/home/FeaturedProducts';
 import {
   fetchCatalogOptions,
+  fetchBestSellers,
   fetchNewArrivals,
   fetchFeaturedProducts,
 } from '../services/catalogService';
@@ -13,11 +15,16 @@ import {
 /**
  * HomePage Component
  * Assembles all locked storefront homepage sections.
- * Loads live active options, New Arrivals and Featured Products from the backend API.
+ * Loads live active options, Top 5 Best Sellers, New Arrivals and Featured Products from backend API.
  * Handles smooth scrolling if navigation lands on a section hash (e.g. /#brands).
  */
 function HomePage() {
   const [options, setOptions] = useState({ brands: null, categories: null });
+  const [bestSellersState, setBestSellersState] = useState({
+    loading: true,
+    data: [],
+    error: null,
+  });
   const [newArrivalsState, setNewArrivalsState] = useState({
     loading: true,
     data: [],
@@ -32,7 +39,7 @@ function HomePage() {
   useEffect(() => {
     let isCurrent = true;
 
-    // Load active options for BrandLogos and ShopByCategory
+    // Load active options for BrandLogos
     fetchCatalogOptions()
       .then((opts) => {
         if (!isCurrent) return;
@@ -43,6 +50,25 @@ function HomePage() {
       })
       .catch(() => {
         // Fallback: components will use default visual presentation
+      });
+
+    // Load Top 5 Best Sellers
+    fetchBestSellers()
+      .then((products) => {
+        if (!isCurrent) return;
+        setBestSellersState({
+          loading: false,
+          data: products,
+          error: null,
+        });
+      })
+      .catch((err) => {
+        if (!isCurrent) return;
+        setBestSellersState({
+          loading: false,
+          data: [],
+          error: err,
+        });
       });
 
     // Load New Arrivals (latest 8 products)
@@ -93,12 +119,14 @@ function HomePage() {
       const targetId = window.location.hash.slice(1);
       const element = document.getElementById(targetId);
       if (element) {
-        setTimeout(() => {
+        const timeoutId = setTimeout(() => {
           element.scrollIntoView({ behavior: 'smooth' });
         }, 100);
+        return () => clearTimeout(timeoutId);
       }
     }
-  }, []);
+    return undefined;
+  }, [options.categories]);
 
   return (
     <>
@@ -108,8 +136,15 @@ function HomePage() {
       {/* Brand Logos Strip (filtered by active backend brands) */}
       <BrandLogos activeBrands={options.brands} />
 
-      {/* Shop by Category (filtered by active backend categories with live counts) */}
-      <ShopByCategory activeCategories={options.categories} />
+      {/* Compact navigation for active Categories with public Products */}
+      <CategoryNavigation categories={options.categories} />
+
+      {/* Top 5 Best Sellers (up to 5 models ranked by completed sales) */}
+      <BestSellers
+        products={bestSellersState.data}
+        isLoading={bestSellersState.loading}
+        error={bestSellersState.error}
+      />
 
       {/* New Arrivals (8 latest models in 4-column grid with live review summary) */}
       <NewArrivals

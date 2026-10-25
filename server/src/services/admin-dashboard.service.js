@@ -8,6 +8,7 @@ import {
   parseDateOnly,
 } from '../config/businessTime.js';
 import { parseEnum, validationError } from '../utils/adminValidation.js';
+import { listCompletedProductSales } from './product-sales.service.js';
 
 const REVENUE_GROUPS = ['day', 'week', 'month'];
 const ORDER_STATUSES = ['PENDING', 'PREPARING', 'SHIPPING', 'DELIVERED', 'COMPLETED', 'CANCELLED'];
@@ -116,7 +117,7 @@ export async function getAdminDashboardSummary(query = {}, { now = new Date() } 
     totalProducts,
     totalMembers,
     statusGroups,
-    variantSales,
+    completedProductSales,
     lowStockVariants,
   ] = await Promise.all([
     prisma.order.aggregate({
@@ -130,11 +131,7 @@ export async function getAdminDashboardSummary(query = {}, { now = new Date() } 
     prisma.product.count(),
     prisma.user.count(),
     prisma.order.groupBy({ by: ['status'], _count: { _all: true } }),
-    prisma.orderItem.groupBy({
-      by: ['variantId'],
-      where: { order: { status: 'COMPLETED' } },
-      _sum: { quantity: true },
-    }),
+    listCompletedProductSales(),
     prisma.variant.findMany({
       where: { stock: { lte: 3 } },
       orderBy: [{ stock: 'asc' }, { id: 'asc' }],
@@ -152,33 +149,22 @@ export async function getAdminDashboardSummary(query = {}, { now = new Date() } 
     }),
   ]);
 
-  const soldVariants = variantSales.length === 0 ? [] : await prisma.variant.findMany({
-    where: { id: { in: variantSales.map((entry) => entry.variantId) } },
+  const soldProducts = completedProductSales.length === 0 ? [] : await prisma.product.findMany({
+    where: { id: { in: completedProductSales.map((entry) => entry.productId) } },
     select: {
       id: true,
-      colorway: {
-        select: {
-          product: {
-            select: { id: true, slug: true, name: true, brand: { select: { name: true } } },
-          },
-        },
-      },
+      slug: true,
+      name: true,
+      brand: { select: { name: true } },
     },
   });
-  const variantById = new Map(soldVariants.map((variant) => [variant.id, variant]));
-  const productSales = new Map();
-  for (const entry of variantSales) {
-    const product = variantById.get(entry.variantId)?.colorway.product;
-    if (!product) continue;
-    const current = productSales.get(product.id) || { product, quantitySold: 0 };
-    current.quantitySold += entry._sum.quantity ?? 0;
-    productSales.set(product.id, current);
-  }
-  const bestSellingProducts = [...productSales.values()]
-    .sort((left, right) => right.quantitySold - left.quantitySold || left.product.id - right.product.id)
+  const productById = new Map(soldProducts.map((product) => [product.id, product]));
+  const bestSellingProducts = completedProductSales
+    .map((entry) => ({ ...entry, product: productById.get(entry.productId) }))
+    .filter((entry) => entry.product)
     .slice(0, topLimit)
-    .map(({ product, quantitySold }) => ({
-      productId: product.id,
+    .map(({ productId, product, quantitySold }) => ({
+      productId,
       slug: product.slug,
       name: product.name,
       brandName: product.brand.name,

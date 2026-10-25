@@ -1,8 +1,18 @@
 import {
+  getCatalogBestSellers,
   getCatalogOptions,
   getCatalogProduct,
   listCatalogProducts,
 } from '../services/catalog.service.js';
+
+export async function getBestSellers(req, res, next) {
+  try {
+    const result = await getCatalogBestSellers();
+    res.status(200).json({ success: true, data: result });
+  } catch (error) {
+    next(error);
+  }
+}
 
 export async function getOptions(req, res, next) {
   try {

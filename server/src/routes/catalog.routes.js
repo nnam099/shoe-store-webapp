@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import {
+  getBestSellers,
   getOptions,
   getProduct,
   listProducts,
@@ -8,6 +9,7 @@ import {
 const router = Router();
 
 router.get('/catalog/options', getOptions);
+router.get('/catalog/best-sellers', getBestSellers);
 router.get('/catalog/products', listProducts);
 router.get('/catalog/products/:slug', getProduct);
 

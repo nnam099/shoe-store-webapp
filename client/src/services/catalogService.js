@@ -363,6 +363,14 @@ export function fetchFeaturedProducts(limit = 6) {
 }
 
 /**
+ * Fetches Best Sellers (up to 5 ranked completed-sales products).
+ */
+export async function fetchBestSellers() {
+  const data = await catalogRequest('/best-sellers');
+  return Array.isArray(data?.products) ? data.products : [];
+}
+
+/**
  * In-memory thumbnail cache for Member Reviews page.
  * Keeps successful thumbnail lookups and 404/inactive outcomes in memory.
  * Transient network failures are NOT cached so they can be retried.

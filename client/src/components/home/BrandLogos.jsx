@@ -8,8 +8,13 @@ export default function BrandLogos({ activeBrands = null }) {
     if (!Array.isArray(activeBrands)) {
       return siteConfig.brands;
     }
+
+    // Slugs of the five hardcoded brands
+    const knownSlugs = new Set(siteConfig.brands.map((b) => b.id));
     const activeSlugSet = new Set(activeBrands.map((b) => b.slug));
-    return siteConfig.brands
+
+    // Existing five brands: filter by active status, prefer API logo/name
+    const knownBrands = siteConfig.brands
       .filter((b) => activeSlugSet.has(b.id))
       .map((b) => {
         const backendBrand = activeBrands.find((ab) => ab.slug === b.id);
@@ -21,6 +26,19 @@ export default function BrandLogos({ activeBrands = null }) {
           logo: backendBrand?.logoUrl || b.logo,
         };
       });
+
+    // New brands created via Admin that are not in the hardcoded list.
+    // Only show brands that have an uploaded logo to avoid broken images.
+    const newBrands = activeBrands
+      .filter((b) => !knownSlugs.has(b.slug) && b.logoUrl)
+      .map((b) => ({
+        id: b.slug,
+        slug: b.slug,
+        name: b.name,
+        logo: b.logoUrl,
+      }));
+
+    return [...knownBrands, ...newBrands];
   }, [activeBrands]);
 
   if (brands.length === 0) return null;

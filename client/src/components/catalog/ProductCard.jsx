@@ -15,12 +15,14 @@ const formatVND = (amount) => {
  * Reusable product display card linking to Product Detail route (/products/:slug).
  * Preserves active colorway deep-linking when navigated from product listing.
  */
-function ProductCard({ product, colorway, reviewSummary }) {
+function ProductCard({ product, colorway, reviewSummary, rank: propRank, quantitySold: propQuantitySold }) {
   const activeColorway = colorway || product?.displayColorway || product?.defaultColorway || {};
   const { name, brand } = product || {};
   const { price, salePrice, thumbnail } = activeColorway;
   const hasSale = salePrice !== null && salePrice !== undefined && salePrice < price;
   const discountPercent = hasSale ? Math.round(((price - salePrice) / price) * 100) : 0;
+  const rank = propRank ?? product?.rank;
+  const quantitySold = propQuantitySold ?? product?.quantitySold;
 
   const effectiveReviewSummary = reviewSummary || product?.reviewSummary;
   const hasReviews = Boolean(
@@ -48,6 +50,11 @@ function ProductCard({ product, colorway, reviewSummary }) {
             -{discountPercent}%
           </span>
         )}
+        {rank != null && (
+          <span className="absolute top-2.5 right-2.5 z-10 bg-[#121212] text-white text-[10px] sm:text-xs font-black tracking-wider uppercase px-2 py-0.5 border border-[#262626]">
+            TOP {rank}
+          </span>
+        )}
         <img
           src={getAssetUrl(thumbnail)}
           alt={`${brand.name} ${name}`}
@@ -71,6 +78,11 @@ function ProductCard({ product, colorway, reviewSummary }) {
               <span className="font-bold text-[#121212]">{formattedRating}</span>
               <span className="text-[#a3a3a3]">·</span>
               <span>{effectiveReviewSummary.reviewCount}</span>
+            </div>
+          )}
+          {quantitySold != null && (
+            <div className="mt-1 text-[11px] font-medium text-[#737373]">
+              Đã bán {quantitySold} đôi
             </div>
           )}
         </div>
