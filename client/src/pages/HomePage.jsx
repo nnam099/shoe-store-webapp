@@ -49,7 +49,7 @@ function HomePage() {
         });
       })
       .catch(() => {
-        // Fallback: components will use default visual presentation
+        // Keep navigation hidden until the API can confirm public eligibility.
       });
 
     // Load Top 5 Best Sellers

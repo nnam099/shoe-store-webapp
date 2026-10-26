@@ -44,8 +44,8 @@ Dự án được xây dựng nhằm đáp ứng trải nghiệm mua sắm trự
 ## 3. Các chức năng chính (Core Features)
 
 ### 3.1. Danh mục & Trải nghiệm sản phẩm (Catalog & Storefront)
-- **5 Thương hiệu chính hãng:** Nike, Adidas, Puma, New Balance, Converse.
-- **4 Phân loại phong cách:** Lifestyle, Running, Streetwear, Classic.
+- **Catalog đa thương hiệu:** dữ liệu seed ban đầu gồm Nike, Adidas, Puma, New Balance và Converse; Admin có thể quản lý thêm Brand.
+- **Category động:** dữ liệu seed ban đầu gồm Lifestyle, Running, Streetwear và Classic; tên/trạng thái hiện hành đến từ PostgreSQL và Admin API.
 - **Bộ lọc đa chiều:**
   - Lọc theo thương hiệu và phân loại.
   - Lọc theo kích cỡ giày (chuẩn EU từ 36 đến 44).
@@ -69,11 +69,12 @@ Dự án được xây dựng nhằm đáp ứng trải nghiệm mua sắm trự
 - **Phương thức thanh toán:** COD (Thanh toán khi nhận hàng).
 - **Phí giao hàng:** Cố định 30.000 VNĐ toàn quốc theo quy tắc nghiệp vụ.
 - **API Báo giá tự động:** `/api/checkout/quote` xác thực giá trị tiền hàng, phí ship và tổng tiền.
-- **Mã đơn hàng chuẩn hóa:** Sinh mã tự động dạng `ORD-XXXXXX`.
+- **Mã đơn hàng chuẩn hóa:** Sinh mã tự động dạng `SL-YYMMDD-XXXXXX`.
 - **Tra cứu đơn hàng công khai (`/order-lookup`):** Khách hàng tra cứu nhanh tiến độ đơn chỉ với Mã đơn hàng + Số điện thoại nhận hàng.
 - **Quy tắc vòng đời đơn hàng:**
-  - Hủy đơn hàng: Chỉ cho phép hủy khi đơn ở trạng thái `PENDING` (Chờ xử lý).
+  - Hủy đơn hàng: Guest/Member được hủy khi đơn ở trạng thái `PENDING` hoặc `PREPARING`; tồn kho được hoàn đúng một lần.
   - Xác nhận đã nhận hàng: Cho phép xác nhận khi đơn chuyển sang trạng thái `DELIVERED` để hoàn tất thành `COMPLETED`.
+  - Đơn `DELIVERED` tự động chuyển `COMPLETED` sau 48 giờ nếu khách chưa xác nhận.
 
 ### 3.4. Tài khoản thành viên (Member Management)
 - Đăng ký tài khoản, Đăng nhập và tự động duy trì phiên làm việc qua JWT.
@@ -83,10 +84,17 @@ Dự án được xây dựng nhằm đáp ứng trải nghiệm mua sắm trự
 - Quản lý lịch sử đơn hàng (`/account/orders`): Theo dõi danh sách và xem chi tiết tiến độ từng đơn hàng của tài khoản.
 
 ### 3.5. Đánh giá sản phẩm đã xác thực (Verified Product Reviews)
-- **Quy tắc chống gian lận:** Chỉ những thành viên đã từng mua sản phẩm và đơn hàng đã giao thành công (`DELIVERED` hoặc `COMPLETED`) mới có quyền gửi đánh giá.
+- **Quy tắc chống gian lận:** Chỉ thành viên đã mua sản phẩm trong đơn hàng `COMPLETED` mới có quyền gửi đánh giá.
 - Mỗi thành viên chỉ đánh giá 1 lần cho mỗi mẫu sản phẩm đã mua (có quyền cập nhật đánh giá đã viết).
-- Đánh giá từ 1 đến 5 sao, kèm tiêu đề và nội dung cảm nhận chi tiết.
+- Đánh giá từ 1 đến 5 sao, kèm nội dung cảm nhận.
 - Bộ lọc đánh giá theo số sao (Tất cả, 5 sao, 4 sao, 3 sao, 2 sao, 1 sao) và thống kê tỷ lệ phân bổ sao.
+
+### 3.6. Quản trị hệ thống (Admin)
+- Xác thực Admin tách biệt với Member và quản lý tài khoản quản trị.
+- Quản lý Brand, Category, Product, Colorway, ảnh sản phẩm, Variant và tồn kho.
+- Upload logo/ảnh JPEG, PNG, WebP hoặc AVIF; kiểm tra định dạng thực và giới hạn 8 MB.
+- Quản lý vòng đời Order, xem Customer, xóa Review và theo dõi lịch sử trạng thái.
+- Dashboard doanh thu theo `completedAt`, số đơn theo trạng thái, sản phẩm bán chạy và Variant sắp hết hàng.
 
 ---
 
@@ -99,7 +107,7 @@ shoe-store-webapp/
 │   ├── src/
 │   │   ├── components/         # Các UI component (layout, catalog, product-detail, auth...)
 │   │   ├── context/            # Context quản lý trạng thái (AuthContext...)
-│   │   ├── data/               # Dữ liệu tĩnh và cấu hình catalog
+│   │   ├── data/               # Nguồn dữ liệu catalog seed ban đầu (không dùng làm runtime Storefront)
 │   │   ├── pages/              # Các trang của ứng dụng (Home, Products, Checkout, Account...)
 │   │   ├── services/           # Các tầng gọi API Backend (auth, order, review, catalog...)
 │   │   ├── utils/              # Tiện ích định dạng tiền tệ, ngày tháng...
@@ -166,8 +174,11 @@ cd server
    PORT=5000
    DATABASE_URL="postgresql://postgres:postgres@localhost:5432/shoe_store_dev?schema=public"
    SHIPPING_FEE=30000
-   JWT_MEMBER_SECRET="your-super-secret-jwt-key-step-lab-2026"
+   JWT_MEMBER_SECRET="<member-secret-local>"
    JWT_MEMBER_EXPIRES_IN=8h
+   JWT_ADMIN_SECRET="<admin-secret-local>"
+   JWT_ADMIN_EXPIRES_IN=8h
+   PRODUCT_IMAGE_UPLOAD_DIR=
    ```
    > *Lưu ý:* Hãy điều chỉnh `postgres:postgres@localhost:5432/shoe_store_dev` cho khớp với tài khoản, mật khẩu và tên CSDL PostgreSQL của bạn. Đảm bảo CSDL `shoe_store_dev` đã được tạo trong PostgreSQL.
 
@@ -177,18 +188,22 @@ Vẫn tại thư mục `server`:
 
 1. Chạy các bản migration để khởi tạo 13 bảng dữ liệu:
    ```bash
-   npx prisma migrate dev
+   npx prisma migrate deploy
    ```
-   *(Trong môi trường production/CI, sử dụng lệnh: `npx prisma migrate deploy`)*
 
-2. Nạp dữ liệu mẫu chuẩn hóa vào CSDL (gồm 5 thương hiệu, 4 danh mục, 20 sản phẩm, 80 phối màu, 314 ảnh, 720 biến thể tồn kho):
+2. Với database mới, nạp dữ liệu mẫu chuẩn hóa (gồm 5 thương hiệu, 4 danh mục, 20 sản phẩm, 80 phối màu, 314 ảnh, 720 biến thể tồn kho):
    ```bash
    npm run seed
    ```
 
-3. (Tùy chọn) Kiểm tra tính toàn vẹn của dữ liệu vừa nạp:
+3. (Tùy chọn) Kiểm tra tính nhất quán của Catalog hiện tại, bao gồm dữ liệu được Admin quản lý:
    ```bash
    node prisma/verify.js
+   ```
+
+   Chỉ khi kiểm tra một database vừa seed và chưa được Admin thay đổi, dùng chế độ baseline cố định:
+   ```bash
+   node prisma/verify.js --seed-baseline
    ```
 
 ### Bước 3: Khởi chạy Backend Server
@@ -233,16 +248,21 @@ cd client
 
 ## 7. Kiểm thử và Kiểm tra chất lượng (Testing & Linting)
 
-### Kiểm thử Backend (Tích hợp API)
+### Kiểm thử Backend (Unit và tích hợp API)
 Tại thư mục `server`:
 ```bash
 cd server
 npm test
 ```
-Bộ kiểm thử tích hợp sử dụng trình chạy native test của Node.js để kiểm thử toàn diện:
+
+> **An toàn dữ liệu:** Integration test tạo và xóa fixture. Chỉ chạy `npm test` khi `DATABASE_URL` trỏ tới database test cô lập. Guard của test sẽ từ chối database phát triển `shoe_store_dev`, nhưng người chạy vẫn phải kiểm tra target trước.
+
+Bộ kiểm thử dùng trình chạy native của Node.js, bao phủ:
 - Xác thực đăng ký, đăng nhập, đổi mật khẩu và quản lý hồ sơ (`auth.integration.test.js`).
 - Vòng đời tạo đơn, tra cứu đơn và quản lý đơn hàng thành viên (`order.member.integration.test.js`).
 - Quy tắc điều kiện và phân trang đánh giá sản phẩm (`review.integration.test.js`).
+- Catalog public, lọc/sort/pagination và Product Detail (`catalog.integration.test.js`).
+- Admin Auth/Catalog, Orders, Customers, Reviews và Dashboard (`admin*.test.js`).
 
 ### Kiểm tra cú pháp Frontend
 Tại thư mục `client`:

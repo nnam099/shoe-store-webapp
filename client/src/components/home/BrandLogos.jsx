@@ -3,21 +3,24 @@ import { Link } from 'react-router-dom';
 import { siteConfig, getAssetUrl } from '../../config/site';
 
 export default function BrandLogos({ activeBrands = null }) {
-  // Only display brands that are active in the backend catalog options
+  // Catalog options already counts only Products that satisfy public visibility rules.
   const brands = useMemo(() => {
     if (!Array.isArray(activeBrands)) {
-      return siteConfig.brands;
+      return [];
     }
+
+    const eligibleBrands = activeBrands.filter((brand) => brand.productCount > 0);
 
     // Slugs of the five hardcoded brands
     const knownSlugs = new Set(siteConfig.brands.map((b) => b.id));
-    const activeSlugSet = new Set(activeBrands.map((b) => b.slug));
+    const eligibleSlugSet = new Set(eligibleBrands.map((b) => b.slug));
 
-    // Existing five brands: filter by active status, prefer API logo/name
+    // Existing five brands: require API eligibility, prefer API logo/name,
+    // and retain the approved local SVG as the visual fallback.
     const knownBrands = siteConfig.brands
-      .filter((b) => activeSlugSet.has(b.id))
+      .filter((b) => eligibleSlugSet.has(b.id))
       .map((b) => {
-        const backendBrand = activeBrands.find((ab) => ab.slug === b.id);
+        const backendBrand = eligibleBrands.find((ab) => ab.slug === b.id);
         return {
           ...b,
           id: b.id,
@@ -29,7 +32,7 @@ export default function BrandLogos({ activeBrands = null }) {
 
     // New brands created via Admin that are not in the hardcoded list.
     // Only show brands that have an uploaded logo to avoid broken images.
-    const newBrands = activeBrands
+    const newBrands = eligibleBrands
       .filter((b) => !knownSlugs.has(b.slug) && b.logoUrl)
       .map((b) => ({
         id: b.slug,

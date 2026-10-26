@@ -35,44 +35,6 @@ export const COLOR_SWATCH_MAP = Object.freeze({
 });
 
 /**
- * Curated editorial presentation metadata for homepage category showcase.
- */
-export const CATEGORY_DEFINITIONS = Object.freeze([
-  {
-    slug: 'lifestyle',
-    name: 'Lifestyle',
-    tagline: 'ÊM ÁI THƯỜNG NHẬT',
-    description: 'Thiết kế cân bằng giữa sự thoải mái và phong cách sống hiện đại.',
-    thumbnail: 'products/new-balance/327/beige/1.avif',
-    repProduct: 'New Balance 327',
-  },
-  {
-    slug: 'running',
-    name: 'Running',
-    tagline: 'HIỆU NĂNG VẬN ĐỘNG',
-    description: 'Tối ưu chuyển động cùng công nghệ đệm trợ lực thể thao.',
-    thumbnail: 'products/nike/pegasus-41/white-green/1.avif',
-    repProduct: 'Nike Pegasus 41',
-  },
-  {
-    slug: 'streetwear',
-    name: 'Streetwear',
-    tagline: 'CÁ TÍNH ĐƯỜNG PHỐ',
-    description: 'Bản sắc thời trang thành thị và văn hóa sneakerhead nguyên bản.',
-    thumbnail: 'products/nike/dunk-low-retro/white-black/1.avif',
-    repProduct: 'Nike Dunk Low Retro',
-  },
-  {
-    slug: 'classic',
-    name: 'Classic',
-    tagline: 'DI SẢN BẤT HỦ',
-    description: 'Những biểu tượng thiết kế vượt thời gian của làng giày thế giới.',
-    thumbnail: 'products/adidas/samba-og/white-black/1.avif',
-    repProduct: 'Adidas Samba OG',
-  },
-]);
-
-/**
  * Normalizes text by lowercasing and removing Vietnamese diacritics.
  */
 export function normalizeText(str) {

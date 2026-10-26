@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import HomePage from './pages/HomePage';
@@ -17,6 +17,7 @@ import ChangePasswordPage from './pages/ChangePasswordPage';
 import MemberOrdersPage from './pages/MemberOrdersPage';
 import MemberOrderDetailPage from './pages/MemberOrderDetailPage';
 import MemberReviewsPage from './pages/MemberReviewsPage';
+import NotFoundPage from './pages/NotFoundPage';
 import RequireMember from './components/auth/RequireMember';
 import { AuthProvider } from './context/AuthContext';
 
@@ -224,6 +225,7 @@ function AppContent() {
               </RequireMember>
             )}
           />
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
 

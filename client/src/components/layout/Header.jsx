@@ -12,6 +12,22 @@ function AccountIcon() {
   );
 }
 
+function SearchIcon() {
+  return (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-4.35-4.35m1.35-5.4a6.75 6.75 0 1 1-13.5 0 6.75 6.75 0 0 1 13.5 0Z" />
+    </svg>
+  );
+}
+
+function LookupIcon() {
+  return (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+    </svg>
+  );
+}
+
 export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
@@ -82,7 +98,7 @@ export default function Header() {
             </span>
           </Link>
 
-          <nav className="hidden md:flex items-center space-x-8" aria-label="Menu chính">
+          <nav className="hidden lg:flex items-center space-x-8" aria-label="Menu chính">
             {siteConfig.navLinks.map((link) => (
               <Link
                 key={link.label}
@@ -97,7 +113,28 @@ export default function Header() {
         </div>
 
         <div className="flex items-center gap-1 sm:gap-2">
-          <div className="relative hidden md:block" ref={accountMenuRef}>
+          <div className="hidden lg:flex items-center gap-1">
+            <Link
+              to="/products"
+              onClick={closeMenus}
+              className="min-w-[44px] min-h-[44px] w-11 h-11 flex items-center justify-center rounded-sm text-[#121212] hover:bg-[#e6e6e2]/60 focus-visible:outline-2 focus-visible:outline-[#991b1b] focus-visible:outline-offset-2 transition-colors"
+              aria-label="Tìm kiếm sản phẩm"
+              title="Tìm kiếm sản phẩm"
+            >
+              <SearchIcon />
+            </Link>
+            <Link
+              to="/order-lookup"
+              onClick={closeMenus}
+              className="min-w-[44px] min-h-[44px] w-11 h-11 flex items-center justify-center rounded-sm text-[#121212] hover:bg-[#e6e6e2]/60 focus-visible:outline-2 focus-visible:outline-[#991b1b] focus-visible:outline-offset-2 transition-colors"
+              aria-label="Tra cứu đơn hàng"
+              title="Tra cứu đơn hàng"
+            >
+              <LookupIcon />
+            </Link>
+          </div>
+
+          <div className="relative hidden lg:block" ref={accountMenuRef}>
             {isInitializing ? (
               <span className="w-11 h-11 flex items-center justify-center text-[#a3a3a3]" aria-label="Đang tải tài khoản">
                 <AccountIcon />
@@ -185,7 +222,7 @@ export default function Header() {
           <button
             type="button"
             onClick={() => setIsMobileMenuOpen((open) => !open)}
-            className="md:hidden min-w-[44px] min-h-[44px] w-11 h-11 flex items-center justify-center p-2.5 rounded-sm text-[#121212] hover:bg-[#e6e6e2]/60 focus-visible:outline-2 focus-visible:outline-[#991b1b] focus-visible:outline-offset-2 transition-colors"
+            className="lg:hidden min-w-[44px] min-h-[44px] w-11 h-11 flex items-center justify-center p-2.5 rounded-sm text-[#121212] hover:bg-[#e6e6e2]/60 focus-visible:outline-2 focus-visible:outline-[#991b1b] focus-visible:outline-offset-2 transition-colors"
             aria-controls="mobile-menu-drawer"
             aria-expanded={isMobileMenuOpen}
             aria-label={isMobileMenuOpen ? 'Đóng menu' : 'Mở menu'}
@@ -205,7 +242,7 @@ export default function Header() {
 
       {isMobileMenuOpen && (
         <div
-          className="fixed inset-0 top-0 z-30 bg-black/40 backdrop-blur-xs md:hidden transition-opacity"
+          className="fixed inset-0 top-0 z-30 bg-black/40 backdrop-blur-xs lg:hidden transition-opacity"
           onClick={() => setIsMobileMenuOpen(false)}
           aria-hidden="true"
         />
@@ -213,7 +250,7 @@ export default function Header() {
 
       <div
         id="mobile-menu-drawer"
-        className={`absolute top-full left-0 right-0 z-40 bg-[#f8f8f6] border-b border-[#e6e6e2] shadow-xl md:hidden max-h-[calc(100dvh-5rem)] overflow-y-auto transition-all duration-300 ease-in-out ${
+        className={`absolute top-full left-0 right-0 z-40 bg-[#f8f8f6] border-b border-[#e6e6e2] shadow-xl lg:hidden max-h-[calc(100dvh-5rem)] overflow-y-auto transition-all duration-300 ease-in-out ${
           isMobileMenuOpen ? 'opacity-100 translate-y-0 visible' : 'opacity-0 -translate-y-4 invisible pointer-events-none'
         }`}
         aria-label="Menu di động"
@@ -230,6 +267,22 @@ export default function Header() {
                 {link.label}
               </Link>
             ))}
+            <Link
+              to="/products"
+              onClick={closeMenus}
+              className="text-base sm:text-lg font-bold uppercase tracking-wider text-[#121212] hover:text-[#991b1b] transition-colors py-3 border-b border-[#e6e6e2]/60 focus-visible:outline-2 focus-visible:outline-[#991b1b] focus-visible:outline-offset-2 min-h-[44px] flex items-center gap-3"
+            >
+              <SearchIcon />
+              Tìm kiếm sản phẩm
+            </Link>
+            <Link
+              to="/order-lookup"
+              onClick={closeMenus}
+              className="text-base sm:text-lg font-bold uppercase tracking-wider text-[#121212] hover:text-[#991b1b] transition-colors py-3 border-b border-[#e6e6e2]/60 focus-visible:outline-2 focus-visible:outline-[#991b1b] focus-visible:outline-offset-2 min-h-[44px] flex items-center gap-3"
+            >
+              <LookupIcon />
+              Tra cứu đơn hàng
+            </Link>
           </div>
 
           <div className="border-t border-[#d4d4ce] pt-5">

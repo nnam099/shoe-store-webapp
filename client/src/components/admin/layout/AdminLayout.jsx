@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import AdminSidebar from './AdminSidebar';
 import { AdminToastContainer, useToasts } from '../common/AdminToast';
 
@@ -10,8 +10,6 @@ import { AdminToastContainer, useToasts } from '../common/AdminToast';
 export default function AdminLayout({ children, title, breadcrumbs = [] }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { toasts, dismissToast } = useToasts();
-  const location = useLocation();
-
   return (
     <div className="flex h-screen overflow-hidden bg-[#f8f8f6]">
       {/* Desktop Sidebar */}
