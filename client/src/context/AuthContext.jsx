@@ -3,8 +3,13 @@ import {
   changeMemberPassword,
   forgotMemberPassword,
   getCurrentMember,
+  linkGoogle,
+  loginGoogle,
   loginMember,
   registerMember,
+  resetMemberPassword,
+  sendPasswordSetupOtp,
+  setupMemberPassword,
   updateMemberProfile,
 } from '../services/authService';
 import {
@@ -84,6 +89,18 @@ export function AuthProvider({ children }) {
     return establishSession(data);
   }, [establishSession]);
 
+  const googleLogin = useCallback(async (credential) => {
+    const data = await loginGoogle({ credential });
+    return establishSession(data);
+  }, [establishSession]);
+
+  const googleLink = useCallback(async (payload) => {
+    if (!token) throw new Error('Phiên đăng nhập không còn hợp lệ.');
+    const data = await linkGoogle(token, payload);
+    if (data?.member) setMember(data.member);
+    return data?.member;
+  }, [token]);
+
   const updateProfile = useCallback(async (profile) => {
     if (!token) throw new Error('Phiên đăng nhập không còn hợp lệ.');
 
@@ -118,6 +135,20 @@ export function AuthProvider({ children }) {
     return result;
   }, [clearSession]);
 
+  const resetPassword = useCallback((payload) => resetMemberPassword(payload), []);
+
+  const sendSetupOtp = useCallback(() => {
+    if (!token) throw new Error('Phiên đăng nhập không còn hợp lệ.');
+    return sendPasswordSetupOtp(token);
+  }, [token]);
+
+  const setupPassword = useCallback(async (payload) => {
+    if (!token) throw new Error('Phiên đăng nhập không còn hợp lệ.');
+    const result = await setupMemberPassword(token, payload);
+    clearAuthentication();
+    return result;
+  }, [clearAuthentication, token]);
+
   const value = useMemo(() => ({
     member,
     token,
@@ -125,10 +156,15 @@ export function AuthProvider({ children }) {
     isInitializing,
     isAuthenticated: Boolean(member && token),
     login,
+    googleLogin,
+    googleLink,
     register,
     updateProfile,
     changePassword,
     forgotPassword,
+    resetPassword,
+    sendSetupOtp,
+    setupPassword,
     logout: clearSession,
     clearSession,
   }), [
@@ -136,10 +172,15 @@ export function AuthProvider({ children }) {
     changePassword,
     clearSession,
     forgotPassword,
+    googleLink,
+    googleLogin,
     isInitializing,
     login,
     member,
     register,
+    resetPassword,
+    sendSetupOtp,
+    setupPassword,
     token,
     updateProfile,
   ]);

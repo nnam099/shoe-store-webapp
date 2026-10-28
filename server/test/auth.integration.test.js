@@ -12,10 +12,12 @@ import {
 } from '../src/middlewares/memberAuth.js';
 import { cancelGuestOrder } from '../src/services/order.service.js';
 import { derivePasswordVersion } from '../src/utils/memberToken.js';
+import { createOpaqueToken, hashOpaqueToken } from '../src/utils/secureToken.js';
 import { assertIsolatedTestDatabase } from './testDatabaseGuard.js';
 
 const TEST_EMAIL = 'm8a.integration.member@example.test';
 const UNKNOWN_EMAIL = 'm8a.integration.unknown@example.test';
+const GUEST_EMAIL = 'm8a.integration.guest@example.test';
 const TEST_PHONE = '0900000088';
 const ORIGINAL_PASSWORD = 'member-pass-8a-original';
 const CHANGED_PASSWORD = 'member-pass-8a-changed';
@@ -26,6 +28,7 @@ let baseUrl;
 let baselineCounts;
 let isolationGuardPassed = false;
 const createdOrderCodes = new Set();
+const createdIntentIds = new Set();
 
 async function counts() {
   const [users, orders, orderItems, orderStatusHistories] = await Promise.all([
@@ -110,6 +113,13 @@ after(async () => {
     }
 
     await prisma.order.delete({ where: { orderCode } });
+  }
+
+  await prisma.emailOutbox.deleteMany({ where: { recipient: TEST_EMAIL } });
+  await prisma.emailOutbox.deleteMany({ where: { recipient: GUEST_EMAIL } });
+  await prisma.securityThrottle.deleteMany({ where: { scope: { startsWith: 'PASSWORD_RESET_' } } });
+  if (createdIntentIds.size) {
+    await prisma.checkoutIntent.deleteMany({ where: { id: { in: [...createdIntentIds] } } });
   }
 
   await prisma.user.deleteMany({
@@ -365,44 +375,42 @@ test('Phase 8A Member auth backend and Guest regressions', async (t) => {
     assert.equal((await api('/api/auth/me', { token: bearer(changedToken) })).status, 200);
   });
 
-  await t.test('simplified forgot password is neutral and invalidates older JWTs', async () => {
-    const mismatch = await api('/api/auth/forgot-password', {
+  await t.test('forgot password is neutral and a single-use reset invalidates older JWTs', async () => {
+    const known = await api('/api/auth/password/forgot', {
       method: 'POST',
-      body: {
-        email: TEST_EMAIL,
-        newPassword: RESET_PASSWORD,
-        newPasswordConfirmation: 'different-password',
-      },
+      body: { email: TEST_EMAIL.toUpperCase() },
     });
-    assert.equal(mismatch.status, 400);
-    assert.equal(mismatch.body.error.code, 'VALIDATION_ERROR');
+    const unknown = await api('/api/auth/password/forgot', {
+      method: 'POST',
+      body: { email: UNKNOWN_EMAIL },
+    });
+    assert.equal(known.status, 202);
+    assert.equal(unknown.status, 202);
+    assert.deepEqual(known.body, unknown.body);
+    assert.equal(await prisma.user.findUnique({ where: { email: UNKNOWN_EMAIL } }), null);
 
-    const reset = await api('/api/auth/forgot-password', {
-      method: 'POST',
-      body: {
-        email: TEST_EMAIL.toUpperCase(),
-        newPassword: RESET_PASSWORD,
-        newPasswordConfirmation: RESET_PASSWORD,
+    const rawResetToken = createOpaqueToken();
+    await prisma.passwordResetToken.create({
+      data: {
+        userId: user.id,
+        tokenHash: hashOpaqueToken(rawResetToken),
+        expiresAt: new Date(Date.now() + 15 * 60_000),
       },
     });
-    const unknown = await api('/api/auth/forgot-password', {
+    const reset = await api('/api/auth/password/reset', {
       method: 'POST',
       body: {
-        email: UNKNOWN_EMAIL,
+        token: rawResetToken,
         newPassword: RESET_PASSWORD,
         newPasswordConfirmation: RESET_PASSWORD,
       },
     });
     assert.equal(reset.status, 200);
-    assert.equal(unknown.status, 200);
-    assert.deepEqual(reset.body, unknown.body);
-    assert.equal(await prisma.user.findUnique({ where: { email: UNKNOWN_EMAIL } }), null);
-
     assert.equal((await api('/api/auth/me', { token: bearer(changedToken) })).status, 401);
-    assert.equal((await api('/api/auth/login', {
+    assert.equal((await api('/api/auth/password/reset', {
       method: 'POST',
-      body: { email: TEST_EMAIL, password: CHANGED_PASSWORD },
-    })).status, 401);
+      body: { token: rawResetToken, newPassword: RESET_PASSWORD, newPasswordConfirmation: RESET_PASSWORD },
+    })).status, 400);
 
     const login = await api('/api/auth/login', {
       method: 'POST',
@@ -473,21 +481,33 @@ test('Phase 8A Member auth backend and Guest regressions', async (t) => {
     });
     assert.equal(quote.status, 200);
 
-    const quotedItem = quote.body.data.items[0];
-    const created = await api('/api/orders', {
+    const intentResponse = await api('/api/checkout/intents', {
       method: 'POST',
       body: {
+        email: GUEST_EMAIL,
         receiverName: 'M8A Integration Test',
         receiverPhone: TEST_PHONE,
         receiverAddress: 'M8A Test Address',
         note: null,
-        items: [{
-          ...item,
-          expectedUnitPrice: quotedItem.unitPrice,
-        }],
-        expectedShippingFee: quote.body.data.shippingFee,
+        items: [item],
       },
     });
+    assert.equal(intentResponse.status, 201);
+    const checkoutIntent = intentResponse.body.data.intent;
+    createdIntentIds.add(checkoutIntent.id);
+    await prisma.checkoutIntent.update({
+      where: { id: checkoutIntent.id },
+      data: { status: 'EMAIL_VERIFIED', verifiedAt: new Date() },
+    });
+    const createdResponse = await fetch(`${baseUrl}/api/checkout/intents/${checkoutIntent.id}/confirm-cod`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Checkout-Token': intentResponse.body.data.guestToken,
+      },
+      body: JSON.stringify({ acceptedQuoteVersion: checkoutIntent.quoteVersion }),
+    });
+    const created = { status: createdResponse.status, body: await createdResponse.json() };
     assert.equal(created.status, 201);
     const orderCode = created.body.data.orderCode;
     createdOrderCodes.add(orderCode);

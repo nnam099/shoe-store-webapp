@@ -23,6 +23,10 @@ export const errorHandler = (err, req, res, next) => {
     errorPayload.code = 'INTERNAL_ERROR';
   }
 
+  if (statusCode === 429 && Number.isInteger(err.retryAfterSeconds)) {
+    res.setHeader('Retry-After', String(err.retryAfterSeconds));
+  }
+
   res.status(statusCode).json({
     success: false,
     error: errorPayload,

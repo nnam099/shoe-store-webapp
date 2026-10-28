@@ -2,6 +2,12 @@ import { Router } from 'express';
 import {
   getQuote,
   createOrder,
+  createIntent,
+  readIntent,
+  patchIntent,
+  sendIntentOtp,
+  verifyIntentOtp,
+  confirmIntentCod,
   lookupOrder,
   cancelOrder,
   confirmReceivedOrder,
@@ -18,6 +24,12 @@ import {
 const router = Router();
 
 router.post('/checkout/quote', getQuote);
+router.post('/checkout/intents', strictOptionalMember, createIntent);
+router.get('/checkout/intents/:intentId', strictOptionalMember, readIntent);
+router.patch('/checkout/intents/:intentId', strictOptionalMember, patchIntent);
+router.post('/checkout/intents/:intentId/email-otp/send', strictOptionalMember, sendIntentOtp);
+router.post('/checkout/intents/:intentId/email-otp/verify', strictOptionalMember, verifyIntentOtp);
+router.post('/checkout/intents/:intentId/confirm-cod', strictOptionalMember, confirmIntentCod);
 router.post('/orders', strictOptionalMember, createOrder);
 router.post('/orders/lookup', lookupOrder);
 router.post('/orders/:orderCode/cancel', cancelOrder);

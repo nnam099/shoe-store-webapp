@@ -30,14 +30,15 @@ export function issueMemberToken(user) {
   const { secret, expiresIn, issuer, audience } = getMemberAuthConfig();
   const subject = String(user?.id ?? '');
 
-  if (!/^\d+$/.test(subject) || !user?.passwordHash) {
-    throw new Error('A valid User identity and password hash are required to issue a token.');
+  if (!/^\d+$/.test(subject) || !Number.isInteger(user?.authVersion) || user.authVersion < 1) {
+    throw new Error('A valid User identity and auth version are required to issue a token.');
   }
 
   return jwt.sign(
     {
       type: MEMBER_TOKEN_TYPE,
-      pv: derivePasswordVersion(user.passwordHash),
+      av: user.authVersion,
+      ...(user.passwordHash ? { pv: derivePasswordVersion(user.passwordHash) } : {}),
     },
     secret,
     {
@@ -65,20 +66,23 @@ export function verifyMemberToken(token) {
     || typeof payload.sub !== 'string'
     || !/^[1-9]\d*$/.test(payload.sub)
     || !Number.isSafeInteger(Number(payload.sub))
-    || typeof payload.pv !== 'string'
-    || payload.pv.length !== PASSWORD_VERSION_LENGTH
+    || !(
+      (Number.isInteger(payload.av) && payload.av >= 1)
+      || (typeof payload.pv === 'string' && payload.pv.length === PASSWORD_VERSION_LENGTH)
+    )
   ) {
     throw new jwt.JsonWebTokenError('Invalid Member token claims.');
   }
 
   return {
     userId: Number(payload.sub),
-    passwordVersion: payload.pv,
+    authVersion: Number.isInteger(payload.av) ? payload.av : null,
+    passwordVersion: typeof payload.pv === 'string' ? payload.pv : null,
   };
 }
 
 export function isCurrentPasswordVersion(tokenVersion, passwordHash) {
-  if (typeof tokenVersion !== 'string') return false;
+  if (typeof tokenVersion !== 'string' || typeof passwordHash !== 'string') return false;
 
   const currentVersion = derivePasswordVersion(passwordHash);
   const tokenBuffer = Buffer.from(tokenVersion, 'utf8');

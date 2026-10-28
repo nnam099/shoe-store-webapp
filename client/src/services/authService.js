@@ -5,6 +5,7 @@ function createApiError(response, data) {
   error.status = response.status;
   error.code = data?.error?.code || 'UNKNOWN_ERROR';
   error.issues = data?.error?.issues || [];
+  error.details = data?.error?.details || null;
   return error;
 }
 
@@ -56,5 +57,25 @@ export function changeMemberPassword(token, payload) {
 }
 
 export function forgotMemberPassword(payload) {
-  return authRequest('/auth/forgot-password', { method: 'POST', body: payload });
+  return authRequest('/auth/password/forgot', { method: 'POST', body: payload });
+}
+
+export function loginGoogle(payload) {
+  return authRequest('/auth/google', { method: 'POST', body: payload });
+}
+
+export function linkGoogle(token, payload) {
+  return authRequest('/auth/google/link', { method: 'POST', token, body: payload });
+}
+
+export function resetMemberPassword(payload) {
+  return authRequest('/auth/password/reset', { method: 'POST', body: payload });
+}
+
+export function sendPasswordSetupOtp(token) {
+  return authRequest('/auth/password/setup/otp/send', { method: 'POST', token, body: {} });
+}
+
+export function setupMemberPassword(token, payload) {
+  return authRequest('/auth/password/setup', { method: 'POST', token, body: payload });
 }

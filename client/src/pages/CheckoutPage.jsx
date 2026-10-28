@@ -1,366 +1,297 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getCart, clearCart } from '../utils/cartStorage';
-import { getCheckoutQuote, createOrder } from '../services/checkoutService';
-import { saveOrderConfirmation } from '../utils/checkoutSession';
-import { addRecentOrder } from '../utils/recentOrders';
+import CheckoutEmailVerification from '../components/checkout/CheckoutEmailVerification';
 import CheckoutForm from '../components/checkout/CheckoutForm';
 import CheckoutSummary from '../components/checkout/CheckoutSummary';
 import { useAuth } from '../context/authContextValue';
+import {
+  confirmCodOrder,
+  createCheckoutIntent,
+  getCheckoutIntent,
+  getCheckoutQuote,
+  sendCheckoutOtp,
+  updateCheckoutIntent,
+  verifyCheckoutOtp,
+} from '../services/checkoutService';
+import { clearCart, getCart } from '../utils/cartStorage';
+import {
+  clearCheckoutIntentSession,
+  getCheckoutIntentSession,
+  saveCheckoutIntentSession,
+  saveOrderConfirmation,
+} from '../utils/checkoutSession';
+import { addRecentOrder } from '../utils/recentOrders';
+
+function cartItems() {
+  return (getCart() || []).map((row) => ({
+    productSlug: row.productSlug,
+    colorwaySlug: row.colorwaySlug,
+    size: row.size,
+    quantity: row.quantity,
+  }));
+}
+
+function itemsSignature(items) {
+  return JSON.stringify((items || []).map((item) => ({
+    productSlug: item.productSlug,
+    colorwaySlug: item.colorwaySlug,
+    size: item.size,
+    quantity: item.quantity,
+  })));
+}
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
-  const { member, token, clearSession } = useAuth();
-
-  // Quote state
+  const { member, token, clearSession, isInitializing } = useAuth();
   const [quote, setQuote] = useState(null);
   const [loadingQuote, setLoadingQuote] = useState(true);
   const [quoteError, setQuoteError] = useState(null);
-
-  // Form state
-  const [formData, setFormData] = useState({
-    receiverName: '',
-    receiverPhone: '',
-    receiverAddress: '',
-    note: '',
-  });
+  const [formData, setFormData] = useState({ email: '', receiverName: '', receiverPhone: '', receiverAddress: '', note: '' });
   const [formErrors, setFormErrors] = useState({});
-
-  // Submission state
+  const [intent, setIntent] = useState(null);
+  const [guestToken, setGuestToken] = useState(null);
+  const [challengeId, setChallengeId] = useState('');
+  const [acceptedQuoteVersion, setAcceptedQuoteVersion] = useState(null);
+  const [otpMessage, setOtpMessage] = useState('');
+  const [otpError, setOtpError] = useState('');
+  const [busyOtp, setBusyOtp] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
-
-  // Refs for focusing invalid inputs
   const nameRef = useRef(null);
   const phoneRef = useRef(null);
   const addressRef = useRef(null);
 
+  const actorKey = token && member ? `member:${member.id}` : 'guest';
+  const credentials = useCallback((overrideGuestToken = guestToken) => ({
+    token: token || undefined,
+    guestToken: token ? undefined : overrideGuestToken || undefined,
+  }), [guestToken, token]);
+
   useEffect(() => {
     if (!member) return;
-
-    // oxlint-disable-next-line react/set-state-in-effect -- Member profile arrives asynchronously; preserve any fields already typed.
+    // oxlint-disable-next-line react/set-state-in-effect -- hydrate checkout fields when async Member context becomes available.
     setFormData((current) => ({
       ...current,
+      email: member.email,
       receiverName: current.receiverName.trim() ? current.receiverName : (member.fullName || ''),
       receiverPhone: current.receiverPhone.trim() ? current.receiverPhone : (member.phone || ''),
       receiverAddress: current.receiverAddress.trim() ? current.receiverAddress : (member.address || ''),
     }));
   }, [member]);
 
-  /**
-   * Fetches the server-authoritative checkout quote for the current cart (e.g. for retry/recovery).
-   */
   const loadQuote = useCallback(async () => {
-    const cart = getCart();
-
-    if (!cart || cart.length === 0) {
+    const items = cartItems();
+    if (!items.length) {
       navigate('/cart', { replace: true });
       return;
     }
-
     setLoadingQuote(true);
     setQuoteError(null);
-    setSubmitError(null);
-
-    const itemsPayload = cart.map((row) => ({
-      productSlug: row.productSlug,
-      colorwaySlug: row.colorwaySlug,
-      size: row.size,
-      quantity: row.quantity,
-    }));
-
     try {
-      const quoteData = await getCheckoutQuote(itemsPayload);
-      setQuote(quoteData);
-    } catch (err) {
-      if (err.status === 409 || err.code === 'CHECKOUT_UNAVAILABLE') {
-        setQuoteError({
-          type: 'UNAVAILABLE',
-          message: 'Giỏ hàng đã có thay đổi và chưa thể thanh toán.',
-          issues: err.issues || [],
-        });
-      } else {
-        setQuoteError({
-          type: 'NETWORK',
-          message: 'Không thể cập nhật thông tin thanh toán lúc này.',
-        });
-      }
+      setQuote(await getCheckoutQuote(items));
+    } catch (error) {
+      setQuoteError({
+        type: error.code === 'CHECKOUT_UNAVAILABLE' ? 'UNAVAILABLE' : 'NETWORK',
+        message: error.code === 'CHECKOUT_UNAVAILABLE'
+          ? 'Giỏ hàng đã thay đổi và chưa thể thanh toán.'
+          : 'Không thể cập nhật thông tin thanh toán lúc này.',
+        issues: error.issues || [],
+      });
     } finally {
       setLoadingQuote(false);
     }
   }, [navigate]);
 
   useEffect(() => {
-    let ignore = false;
-    const cart = getCart();
+    // oxlint-disable-next-line react/set-state-in-effect -- initial quote loading is an external API synchronization.
+    void loadQuote();
+  }, [loadQuote]);
 
-    if (!cart || cart.length === 0) {
-      navigate('/cart', { replace: true });
+  useEffect(() => {
+    if (isInitializing) return;
+    const saved = getCheckoutIntentSession();
+    if (!saved || saved.actor !== actorKey) {
+      if (saved) clearCheckoutIntentSession();
       return;
     }
+    let active = true;
+    getCheckoutIntent(saved.intentId, {
+      token: token || undefined,
+      guestToken: token ? undefined : saved.guestToken,
+    }).then((data) => {
+      if (!active) return;
+      setIntent(data.intent);
+      setGuestToken(saved.guestToken || null);
+      setQuote(data.intent.quote);
+      setFormData((current) => ({
+        ...current,
+        email: data.intent.email,
+        receiverName: data.intent.receiverName,
+        receiverPhone: data.intent.receiverPhone,
+        receiverAddress: data.intent.receiverAddress,
+        note: data.intent.note || '',
+      }));
+    }).catch(() => {
+      if (active) clearCheckoutIntentSession();
+    });
+    return () => { active = false; };
+  }, [actorKey, isInitializing, token]);
 
-    const itemsPayload = cart.map((row) => ({
-      productSlug: row.productSlug,
-      colorwaySlug: row.colorwaySlug,
-      size: row.size,
-      quantity: row.quantity,
-    }));
-
-    getCheckoutQuote(itemsPayload)
-      .then((quoteData) => {
-        if (!ignore) {
-          setQuote(quoteData);
-          setLoadingQuote(false);
-        }
-      })
-      .catch((err) => {
-        if (!ignore) {
-          if (err.status === 409 || err.code === 'CHECKOUT_UNAVAILABLE') {
-            setQuoteError({
-              type: 'UNAVAILABLE',
-              message: 'Giỏ hàng đã có thay đổi và chưa thể thanh toán.',
-              issues: err.issues || [],
-            });
-          } else {
-            setQuoteError({
-              type: 'NETWORK',
-              message: 'Không thể cập nhật thông tin thanh toán lúc này.',
-            });
-          }
-          setLoadingQuote(false);
-        }
-      });
-
-    return () => {
-      ignore = true;
-    };
-  }, [navigate]);
-
-  /**
-   * Handles form input changes and clears matching field error.
-   */
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (formErrors[name]) {
-      setFormErrors((prev) => ({ ...prev, [name]: '' }));
+  const handleInputChange = (event) => {
+    const { name, value } = event.target;
+    setFormData((current) => ({ ...current, [name]: value }));
+    setFormErrors((current) => ({ ...current, [name]: '' }));
+    setSubmitError(null);
+    if (name === 'email' && value.trim().toLowerCase() !== intent?.email) {
+      setIntent((current) => current ? { ...current, verified: false, verifiedAt: null } : current);
+      setChallengeId('');
+      setAcceptedQuoteVersion(null);
     }
   };
 
-  /**
-   * Validates client-side recipient information before submission.
-   */
   const validateForm = () => {
     const errors = {};
     const name = formData.receiverName.trim();
     const phone = formData.receiverPhone.trim();
     const address = formData.receiverAddress.trim();
-
-    if (!name) {
-      errors.receiverName = 'Vui lòng nhập họ và tên người nhận.';
-    } else if (name.length > 100) {
-      errors.receiverName = 'Họ và tên không được vượt quá 100 ký tự.';
-    }
-
-    if (!phone) {
-      errors.receiverPhone = 'Vui lòng nhập số điện thoại nhận hàng.';
-    } else {
-      // Practical phone check: allows digits, +, spaces, -, (, ), ., and requires 8-15 actual digits
-      const hasValidChars = /^[0-9+\s\-().]+$/.test(phone);
-      const digitCount = (phone.match(/\d/g) || []).length;
-      if (!hasValidChars || digitCount < 8 || digitCount > 15) {
-        errors.receiverPhone = 'Số điện thoại không hợp lệ (cần từ 8 đến 15 chữ số).';
-      }
-    }
-
-    if (!address) {
-      errors.receiverAddress = 'Vui lòng nhập địa chỉ nhận hàng chi tiết.';
-    }
-
+    if (!member && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) errors.email = 'Email không hợp lệ.';
+    if (!name || name.length > 100) errors.receiverName = 'Vui lòng nhập họ tên hợp lệ.';
+    const digits = (phone.match(/\d/g) || []).length;
+    if (!/^[0-9+\s\-().]+$/.test(phone) || digits < 8 || digits > 15) errors.receiverPhone = 'Số điện thoại không hợp lệ.';
+    if (!address) errors.receiverAddress = 'Vui lòng nhập địa chỉ nhận hàng.';
     setFormErrors(errors);
-
-    // Focus first invalid field
-    if (errors.receiverName) {
-      nameRef.current?.focus();
-    } else if (errors.receiverPhone) {
-      phoneRef.current?.focus();
-    } else if (errors.receiverAddress) {
-      addressRef.current?.focus();
-    }
-
+    if (errors.receiverName) nameRef.current?.focus();
+    else if (errors.receiverPhone) phoneRef.current?.focus();
+    else if (errors.receiverAddress) addressRef.current?.focus();
     return Object.keys(errors).length === 0;
   };
 
-  /**
-   * Handles checkout submission.
-   */
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (submitting || !quote) return;
-
-    if (!validateForm()) return;
-
-    setSubmitting(true);
-    setSubmitError(null);
-
-    const orderPayload = {
+  const createOrSyncIntent = async () => {
+    const items = cartItems();
+    if (!items.length) throw new Error('Giỏ hàng trống.');
+    const receiver = {
       receiverName: formData.receiverName.trim(),
       receiverPhone: formData.receiverPhone.trim(),
       receiverAddress: formData.receiverAddress.trim(),
-      note: formData.note ? formData.note.trim() : null,
-      items: quote.items.map((it) => ({
-        productSlug: it.productSlug,
-        colorwaySlug: it.colorwaySlug,
-        size: it.size,
-        quantity: it.quantity,
-        expectedUnitPrice: it.unitPrice,
-      })),
-      expectedShippingFee: quote.shippingFee,
+      note: formData.note.trim() || null,
     };
-    const checkoutToken = token;
+    if (!intent) {
+      const data = await createCheckoutIntent({
+        ...receiver,
+        ...(!member ? { email: formData.email.trim() } : {}),
+        items,
+      }, { token: token || undefined });
+      setIntent(data.intent);
+      setGuestToken(data.guestToken || null);
+      setQuote(data.intent.quote);
+      saveCheckoutIntentSession({ intentId: data.intent.id, guestToken: data.guestToken, actor: actorKey });
+      return { intent: data.intent, guestToken: data.guestToken || null, quoteChanged: false };
+    }
 
+    const changedItems = itemsSignature(items) !== itemsSignature(intent.quote?.items);
+    const payload = {
+      ...receiver,
+      ...(!member ? { email: formData.email.trim() } : {}),
+      ...(changedItems ? { items } : {}),
+    };
+    const data = await updateCheckoutIntent(intent.id, payload, credentials());
+    setIntent(data.intent);
+    setQuote(data.intent.quote);
+    if (changedItems) setAcceptedQuoteVersion(null);
+    return { intent: data.intent, guestToken, quoteChanged: changedItems };
+  };
+
+  const handleSendOtp = async () => {
+    if (!validateForm()) return;
+    setBusyOtp(true);
+    setOtpError('');
+    setOtpMessage('');
     try {
-      const orderResult = await createOrder(orderPayload, { token: checkoutToken });
+      const synced = await createOrSyncIntent();
+      const result = await sendCheckoutOtp(synced.intent.id, credentials(synced.guestToken));
+      setChallengeId(result.challengeId);
+      setOtpMessage('Mã OTP đã được gửi. Bạn có thể gửi lại sau 60 giây.');
+    } catch (error) {
+      setOtpError(error.message || 'Không thể gửi mã OTP.');
+    } finally {
+      setBusyOtp(false);
+    }
+  };
 
-      if (
-        !orderResult ||
-        typeof orderResult.orderCode !== 'string' ||
-        !orderResult.orderCode.trim()
-      ) {
-        throw new Error('Invalid successful order response');
+  const handleVerifyOtp = async (otp) => {
+    if (!intent || !challengeId) return;
+    setBusyOtp(true);
+    setOtpError('');
+    try {
+      const result = await verifyCheckoutOtp(intent.id, { challengeId, otp }, credentials());
+      setIntent((current) => ({ ...current, verified: true, verifiedAt: result.verifiedAt, status: 'EMAIL_VERIFIED' }));
+      setOtpMessage('');
+    } catch (error) {
+      setOtpError(error.message || 'Không thể xác thực OTP.');
+    } finally {
+      setBusyOtp(false);
+    }
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (submitting || !validateForm()) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const synced = await createOrSyncIntent();
+      if (!synced.intent.verified) {
+        setSubmitError('Vui lòng xác thực email trước khi đặt hàng.');
+        return;
       }
-
-      if (!checkoutToken) {
-        // Guest-only shortcut; Member order history is authoritative and server-backed.
-        addRecentOrder(orderResult.orderCode, new Date().toISOString());
+      if (synced.quoteChanged || acceptedQuoteVersion !== synced.intent.quoteVersion) {
+        setSubmitError('Báo giá đã được cập nhật. Vui lòng kiểm tra và xác nhận lại tổng tiền.');
+        return;
       }
-
-      // Save confirmation snapshot, clear cart, and navigate to success route
-      saveOrderConfirmation({
-        ...orderResult,
-        memberOrder: Boolean(checkoutToken),
-      });
+      const order = await confirmCodOrder(synced.intent.id, acceptedQuoteVersion, credentials(synced.guestToken));
+      if (!token) addRecentOrder(order.orderCode, new Date().toISOString());
+      saveOrderConfirmation({ ...order, memberOrder: Boolean(token) });
+      clearCheckoutIntentSession();
       clearCart();
-      navigate(`/order-success/${orderResult.orderCode}`, { replace: true });
-    } catch (err) {
-      setSubmitting(false);
-
-      if (checkoutToken && err.status === 401 && err.code === 'UNAUTHORIZED') {
+      navigate(`/order-success/${order.orderCode}`, { replace: true });
+    } catch (error) {
+      if (token && error.status === 401 && error.code === 'UNAUTHORIZED') {
         clearSession();
-        setSubmitError(
-          'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại trước khi đặt hàng.'
-        );
-      } else if (err.status === 409 && err.code === 'CHECKOUT_CHANGED') {
-        // Price or shipping fee changed; update with fresh quote if provided
-        if (err.details?.quote) {
-          setQuote(err.details.quote);
-        } else {
-          loadQuote();
-        }
-        setSubmitError(
-          'Thông tin đơn hàng đã thay đổi. Vui lòng kiểm tra lại trước khi đặt hàng.'
-        );
-      } else if (
-        err.status === 409 &&
-        (err.code === 'INSUFFICIENT_STOCK' || err.code === 'CHECKOUT_UNAVAILABLE')
-      ) {
-        setSubmitError(
-          'Một hoặc nhiều sản phẩm không còn đủ số lượng để đặt hàng.'
-        );
-      } else if (err.status === 400) {
-        setSubmitError(
-          err.message || 'Thông tin đặt hàng không hợp lệ. Vui lòng kiểm tra lại.'
-        );
+        setSubmitError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+      } else if (error.code === 'CHECKOUT_CHANGED') {
+        const latestQuote = error.details?.quote;
+        const latestVersion = error.details?.quoteVersion;
+        if (latestQuote) setQuote(latestQuote);
+        if (intent && latestVersion) setIntent((current) => ({ ...current, quote: latestQuote, quoteVersion: latestVersion }));
+        setAcceptedQuoteVersion(null);
+        setSubmitError('Giá hoặc giỏ hàng đã thay đổi. Vui lòng kiểm tra và xác nhận báo giá mới.');
+      } else if (error.code === 'CHECKOUT_UNAVAILABLE' || error.code === 'INSUFFICIENT_STOCK') {
+        if (error.details?.quote) setQuote(error.details.quote);
+        if (intent && error.details?.quoteVersion) setIntent((current) => ({ ...current, quote: error.details.quote, quoteVersion: error.details.quoteVersion }));
+        setAcceptedQuoteVersion(null);
+        setSubmitError('Một hoặc nhiều sản phẩm hiện không còn đủ tồn kho.');
       } else {
-        setSubmitError(
-          'Không thể hoàn tất đơn hàng lúc này. Vui lòng thử lại.'
-        );
+        setSubmitError(error.message || 'Không thể hoàn tất đơn hàng lúc này.');
       }
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-      {/* Breadcrumb Navigation */}
-      <nav aria-label="Breadcrumb" className="mb-6">
-        <ol className="flex items-center space-x-2 text-xs text-[#737373]">
-          <li>
-            <Link to="/" className="hover:text-[#121212] transition-colors">
-              Trang chủ
-            </Link>
-          </li>
-          <li aria-hidden="true">/</li>
-          <li>
-            <Link to="/cart" className="hover:text-[#121212] transition-colors">
-              Giỏ hàng
-            </Link>
-          </li>
-          <li aria-hidden="true">/</li>
-          <li className="font-bold text-[#121212]" aria-current="page">
-            Thanh toán
-          </li>
-        </ol>
-      </nav>
-
-      {/* Page Title */}
+      <nav aria-label="Breadcrumb" className="mb-6 text-xs text-[#737373]"><Link to="/cart" className="hover:text-[#121212]">Giỏ hàng</Link> / <span className="font-bold text-[#121212]">Thanh toán</span></nav>
       <div className="border-b border-[#e5e5e0] pb-4 mb-8">
-        <h1 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-[#121212]">
-          Thanh toán
-        </h1>
-        <p className="text-xs text-[#737373] mt-1">
-          Hoàn tất đơn hàng với phương thức thanh toán khi nhận hàng (COD).
-        </p>
+        <h1 className="text-xl sm:text-2xl font-black uppercase tracking-tight">Thanh toán</h1>
+        <p className="mt-1 text-xs text-[#737373]">Xác thực email và hoàn tất đơn COD.</p>
       </div>
-
-      {/* Quote Error State */}
       {quoteError ? (
-        <div className="bg-white border border-[#e5e5e0] p-8 rounded-xs text-center max-w-lg mx-auto space-y-4">
-          <div className="w-12 h-12 rounded-full bg-[#fef2f2] text-[#b91c1c] flex items-center justify-center mx-auto">
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-          </div>
-          <h2 className="text-sm font-bold text-[#121212]">
-            {quoteError.message}
-          </h2>
-
-          {quoteError.issues && quoteError.issues.length > 0 && (
-            <div className="text-xs text-[#737373] text-left bg-[#f8f8f6] p-3 rounded-xs space-y-1">
-              {quoteError.issues.map((iss, i) => (
-                <p key={i}>
-                  • {iss.productSlug} ({iss.colorwaySlug}, size {iss.size}):{' '}
-                  {iss.reason === 'INSUFFICIENT_STOCK' ? `Chỉ còn ${iss.availableStock} sản phẩm` : 'Sản phẩm tạm không khả dụng'}
-                </p>
-              ))}
-            </div>
-          )}
-
-          <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-center">
-            {quoteError.type === 'NETWORK' && (
-              <button
-                type="button"
-                onClick={loadQuote}
-                className="min-h-[44px] px-6 py-2.5 bg-[#121212] hover:bg-[#262626] text-white text-xs font-bold uppercase tracking-wider rounded-xs transition-colors"
-              >
-                Thử lại
-              </button>
-            )}
-            <Link
-              to="/cart"
-              className="min-h-[44px] px-6 py-2.5 border border-[#e5e5e0] hover:bg-[#f5f5f3] text-[#121212] text-xs font-bold uppercase tracking-wider rounded-xs transition-colors flex items-center justify-center"
-            >
-              Quay lại giỏ hàng
-            </Link>
-          </div>
+        <div className="mx-auto max-w-lg border border-[#fecaca] bg-white p-8 text-center">
+          <p className="text-sm font-bold text-[#991b1b]">{quoteError.message}</p>
+          <button type="button" onClick={loadQuote} className="mt-4 min-h-[44px] bg-[#121212] px-6 text-xs font-bold uppercase text-white">Thử lại</button>
         </div>
       ) : loadingQuote ? (
-        <div className="py-20 text-center space-y-3">
-          <div className="w-8 h-8 border-2 border-[#121212] border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-xs text-[#737373] font-medium">
-            Đang cập nhật đơn hàng...
-          </p>
-        </div>
+        <div className="py-20 text-center text-xs text-[#737373]">Đang cập nhật đơn hàng...</div>
       ) : (
         <CheckoutForm
           ref={{ nameRef, phoneRef, addressRef }}
@@ -369,9 +300,26 @@ export default function CheckoutPage() {
           onChange={handleInputChange}
           onSubmit={handleSubmit}
           submitting={submitting}
-          disabled={loadingQuote || !!quoteError}
+          disabled={!intent?.verified || acceptedQuoteVersion !== intent?.quoteVersion}
           submitError={submitError}
           memberEmail={member?.email || ''}
+          emailVerified={Boolean(intent?.verified)}
+          quoteAccepted={acceptedQuoteVersion === intent?.quoteVersion}
+          onQuoteAccepted={(accepted) => setAcceptedQuoteVersion(accepted ? intent?.quoteVersion : null)}
+          emailVerification={(
+            <CheckoutEmailVerification
+              email={formData.email}
+              memberEmail={member?.email || ''}
+              onEmailChange={(value) => handleInputChange({ target: { name: 'email', value } })}
+              onSend={handleSendOtp}
+              onVerify={handleVerifyOtp}
+              challengeId={challengeId}
+              verified={Boolean(intent?.verified)}
+              busy={busyOtp}
+              message={otpMessage}
+              error={otpError || formErrors.email}
+            />
+          )}
           summary={<CheckoutSummary quote={quote} loading={loadingQuote} />}
         />
       )}

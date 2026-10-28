@@ -1,80 +1,59 @@
-/**
- * STEP/LAB Checkout API Service
- * Centralizes checkout quote and Guest/Member order placement HTTP calls.
- * Communicates with backend endpoints (/api/checkout/quote, /api/orders).
- */
-
-/**
- * Normalizes HTTP error responses into structured Error objects.
- */
 function createApiError(response, data) {
-  const errorObj = new Error(
-    data?.error?.message || response.statusText || 'Yêu cầu không thành công'
-  );
-  errorObj.status = response.status;
-  errorObj.code = data?.error?.code || 'UNKNOWN_ERROR';
-  errorObj.issues = data?.error?.issues || [];
-  errorObj.details = data?.error?.details || null;
-  return errorObj;
+  const error = new Error(data?.error?.message || response.statusText || 'Yêu cầu không thành công');
+  error.status = response.status;
+  error.code = data?.error?.code || 'UNKNOWN_ERROR';
+  error.issues = data?.error?.issues || [];
+  error.details = data?.error?.details || null;
+  return error;
 }
 
-/**
- * Requests an authoritative server quote for items in cart.
- *
- * @param {Array<{ productSlug: string, colorwaySlug: string, size: string, quantity: number }>} items
- * @returns {Promise<{ items: Array, subtotal: number, shippingFee: number, total: number, paymentMethod: string }>}
- */
-export async function getCheckoutQuote(items) {
-  const response = await fetch('/api/checkout/quote', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ items }),
-  });
-
-  const data = await response.json().catch(() => null);
-
-  if (!response.ok) {
-    throw createApiError(response, data);
-  }
-
-  return data?.data;
-}
-
-/**
- * Places a Guest or authenticated Member order with server-confirmed values.
- *
- * @param {Object} orderPayload
- * @param {string} orderPayload.receiverName
- * @param {string} orderPayload.receiverPhone
- * @param {string} orderPayload.receiverAddress
- * @param {string|null} [orderPayload.note]
- * @param {Array<{ productSlug: string, colorwaySlug: string, size: string, quantity: number, expectedUnitPrice: number }>} orderPayload.items
- * @param {number} orderPayload.expectedShippingFee
- * @returns {Promise<{ orderCode: string, status: string, subtotal: number, shippingFee: number, total: number, paymentMethod: string, items: Array }>}
- */
-export async function createOrder(orderPayload, { token = null } = {}) {
-  const headers = {
-    'Content-Type': 'application/json',
-  };
+async function checkoutRequest(path, { method = 'GET', token, guestToken, body } = {}) {
+  const headers = {};
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (token) headers.Authorization = `Bearer ${token}`;
-
-  const response = await fetch('/api/orders', {
-    method: 'POST',
+  if (guestToken) headers['X-Checkout-Token'] = guestToken;
+  const response = await fetch(`/api${path}`, {
+    method,
     headers,
-    body: JSON.stringify(orderPayload),
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
-
   const data = await response.json().catch(() => null);
-
-  if (!response.ok) {
-    throw createApiError(response, data);
-  }
-
+  if (!response.ok) throw createApiError(response, data);
   return data?.data;
 }
 
-export function createGuestOrder(orderPayload) {
-  return createOrder(orderPayload);
+export function getCheckoutQuote(items) {
+  return checkoutRequest('/checkout/quote', { method: 'POST', body: { items } });
+}
+
+export function createCheckoutIntent(payload, { token } = {}) {
+  return checkoutRequest('/checkout/intents', { method: 'POST', token, body: payload });
+}
+
+export function getCheckoutIntent(intentId, credentials = {}) {
+  return checkoutRequest(`/checkout/intents/${encodeURIComponent(intentId)}`, credentials);
+}
+
+export function updateCheckoutIntent(intentId, payload, credentials = {}) {
+  return checkoutRequest(`/checkout/intents/${encodeURIComponent(intentId)}`, {
+    method: 'PATCH', body: payload, ...credentials,
+  });
+}
+
+export function sendCheckoutOtp(intentId, credentials = {}) {
+  return checkoutRequest(`/checkout/intents/${encodeURIComponent(intentId)}/email-otp/send`, {
+    method: 'POST', body: {}, ...credentials,
+  });
+}
+
+export function verifyCheckoutOtp(intentId, payload, credentials = {}) {
+  return checkoutRequest(`/checkout/intents/${encodeURIComponent(intentId)}/email-otp/verify`, {
+    method: 'POST', body: payload, ...credentials,
+  });
+}
+
+export function confirmCodOrder(intentId, acceptedQuoteVersion, credentials = {}) {
+  return checkoutRequest(`/checkout/intents/${encodeURIComponent(intentId)}/confirm-cod`, {
+    method: 'POST', body: { acceptedQuoteVersion }, ...credentials,
+  });
 }

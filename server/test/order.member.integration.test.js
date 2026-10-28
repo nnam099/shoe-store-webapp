@@ -14,6 +14,7 @@ const TEST_EMAILS = [
   'm8c.integration.b@example.test',
 ];
 const TEST_PHONE = '0900000812';
+const GUEST_EMAIL = 'm8c.integration.guest@example.test';
 const TEST_PASSWORD = 'member-pass-8c';
 
 let server;
@@ -23,6 +24,7 @@ let variant;
 let variantStockBefore;
 let isolationGuardPassed = false;
 const createdOrderCodes = new Set();
+const createdIntentIds = new Set();
 
 async function counts() {
   const [users, orders, orderItems, orderStatusHistories] = await Promise.all([
@@ -34,9 +36,10 @@ async function counts() {
   return { users, orders, orderItems, orderStatusHistories };
 }
 
-async function api(path, { method = 'GET', authorization, body } = {}) {
+async function api(path, { method = 'GET', authorization, checkoutToken, body } = {}) {
   const headers = {};
   if (authorization !== undefined) headers.Authorization = authorization;
+  if (checkoutToken !== undefined) headers['X-Checkout-Token'] = checkoutToken;
   if (body !== undefined) headers['Content-Type'] = 'application/json';
 
   const response = await fetch(`${baseUrl}${path}`, {
@@ -139,6 +142,13 @@ after(async () => {
     await prisma.order.delete({ where: { orderCode } });
   }
 
+  await prisma.emailOutbox.deleteMany({
+    where: { recipient: { in: [...TEST_EMAILS, GUEST_EMAIL] } },
+  });
+  if (createdIntentIds.size) {
+    await prisma.checkoutIntent.deleteMany({ where: { id: { in: [...createdIntentIds] } } });
+  }
+
   await prisma.user.deleteMany({
     where: {
       email: { in: TEST_EMAILS },
@@ -182,18 +192,32 @@ test('Phase 8C Member checkout and order API', async (t) => {
   const quote = quoteResponse.body.data;
 
   async function createOrder(authorization, overrides = {}) {
-    const response = await api('/api/orders', {
+    const intentResponse = await api('/api/checkout/intents', {
       method: 'POST',
       authorization,
       body: {
+        ...(!authorization ? { email: GUEST_EMAIL } : {}),
         receiverName: 'M8C Integration Recipient',
         receiverPhone: TEST_PHONE,
         receiverAddress: 'M8C Integration Address',
         note: null,
-        items: [{ ...item, expectedUnitPrice: quote.items[0].unitPrice }],
-        expectedShippingFee: quote.shippingFee,
+        items: [item],
         ...overrides,
       },
+    });
+    if (intentResponse.status !== 201) return intentResponse;
+    const checkoutIntent = intentResponse.body.data.intent;
+    const guestToken = intentResponse.body.data.guestToken;
+    createdIntentIds.add(checkoutIntent.id);
+    await prisma.checkoutIntent.update({
+      where: { id: checkoutIntent.id },
+      data: { status: 'EMAIL_VERIFIED', verifiedAt: new Date() },
+    });
+    const response = await api(`/api/checkout/intents/${checkoutIntent.id}/confirm-cod`, {
+      method: 'POST',
+      authorization,
+      checkoutToken: guestToken,
+      body: { acceptedQuoteVersion: checkoutIntent.quoteVersion },
     });
     if (response.status === 201) createdOrderCodes.add(response.body.data.orderCode);
     return response;
@@ -269,7 +293,7 @@ test('Phase 8C Member checkout and order API', async (t) => {
     const newHash = await bcrypt.hash(`${TEST_PASSWORD}-changed`, 4);
     const updatedA = await prisma.user.update({
       where: { id: memberA.id },
-      data: { passwordHash: newHash },
+      data: { passwordHash: newHash, authVersion: { increment: 1 } },
     });
     const stale = await createOrder(bearer(staleToken));
     assert.equal(stale.status, 401);

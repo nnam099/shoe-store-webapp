@@ -6,6 +6,39 @@
  */
 
 export const ORDER_CONFIRMATION_SESSION_KEY = 'steplab_order_confirmation_v1';
+export const CHECKOUT_INTENT_SESSION_KEY = 'steplab_checkout_intent_v2';
+
+export function saveCheckoutIntentSession(value) {
+  if (typeof window === 'undefined' || !window.sessionStorage) return;
+  try {
+    window.sessionStorage.setItem(CHECKOUT_INTENT_SESSION_KEY, JSON.stringify({
+      intentId: value.intentId,
+      guestToken: value.guestToken || null,
+      actor: value.actor,
+    }));
+  } catch {
+    // Storage is an optional recovery aid; server ownership remains authoritative.
+  }
+}
+
+export function getCheckoutIntentSession() {
+  if (typeof window === 'undefined' || !window.sessionStorage) return null;
+  try {
+    const value = JSON.parse(window.sessionStorage.getItem(CHECKOUT_INTENT_SESSION_KEY));
+    return typeof value?.intentId === 'string' ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearCheckoutIntentSession() {
+  if (typeof window === 'undefined' || !window.sessionStorage) return;
+  try {
+    window.sessionStorage.removeItem(CHECKOUT_INTENT_SESSION_KEY);
+  } catch {
+    // Ignore unavailable storage.
+  }
+}
 
 /**
  * Saves a non-sensitive confirmation snapshot upon HTTP 201 order creation.

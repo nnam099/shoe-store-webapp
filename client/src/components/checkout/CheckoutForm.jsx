@@ -19,6 +19,10 @@ const CheckoutForm = forwardRef(function CheckoutForm(
     disabled,
     submitError,
     memberEmail,
+    emailVerification,
+    quoteAccepted,
+    onQuoteAccepted,
+    emailVerified,
     summary,
   },
   ref
@@ -188,6 +192,8 @@ const CheckoutForm = forwardRef(function CheckoutForm(
         </div>
       </div>
 
+      {emailVerification}
+
       {/* Payment Method Section (COD Only) */}
       <div className="bg-white border border-[#e5e5e0] p-6 sm:p-7 rounded-xs shadow-2xs">
         <div className="border-b border-[#e5e5e0] pb-3 mb-5">
@@ -225,6 +231,16 @@ const CheckoutForm = forwardRef(function CheckoutForm(
 
       {/* 3. Actions: Submit Error, Place Order CTA & Back to Cart (Left Column bottom on desktop; after Summary on mobile) */}
       <div className="lg:col-span-7 lg:col-start-1 lg:row-start-2 space-y-4">
+        <label className={`flex items-start gap-3 border p-4 text-xs ${emailVerified ? 'border-[#d4d4ce] bg-white' : 'border-[#e5e5e0] bg-[#f5f5f3] text-[#737373]'}`}>
+          <input
+            type="checkbox"
+            checked={quoteAccepted}
+            onChange={(event) => onQuoteAccepted(event.target.checked)}
+            disabled={!emailVerified || submitting}
+            className="mt-0.5 h-4 w-4"
+          />
+          <span>Tôi đã kiểm tra và xác nhận sản phẩm, giá và tổng tiền hiện tại.</span>
+        </label>
         {/* Form-level Error Alert (if any) */}
         {submitError && (
           <div

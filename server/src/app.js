@@ -11,6 +11,11 @@ import { errorHandler } from './middlewares/errorHandler.js';
 
 const app = express();
 
+const trustProxyHops = Number.parseInt(process.env.TRUST_PROXY_HOPS || '0', 10);
+if (Number.isInteger(trustProxyHops) && trustProxyHops > 0) {
+  app.set('trust proxy', trustProxyHops);
+}
+
 app.use(cors());
 app.use(express.json());
 app.use('/api/uploads', express.static(MANAGED_UPLOAD_ROOT, {

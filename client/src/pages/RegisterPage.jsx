@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import AuthField from '../components/auth/AuthField';
 import AuthShell from '../components/auth/AuthShell';
+import GoogleSignInButton from '../components/auth/GoogleSignInButton';
 import { useAuth } from '../context/authContextValue';
 import {
   validateEmail,
@@ -20,7 +21,7 @@ const INITIAL_FORM = {
 };
 
 export default function RegisterPage() {
-  const { isAuthenticated, isInitializing, register } = useAuth();
+  const { isAuthenticated, isInitializing, register, googleLogin } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState(INITIAL_FORM);
   const [errors, setErrors] = useState({});
@@ -66,6 +67,19 @@ export default function RegisterPage() {
       navigate('/account', { replace: true });
     } catch (error) {
       setSubmitError(error.message || 'Không thể đăng ký lúc này.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleGoogle = async (credential) => {
+    setIsSubmitting(true);
+    setSubmitError('');
+    try {
+      await googleLogin(credential);
+      navigate('/account', { replace: true });
+    } catch (error) {
+      setSubmitError(error.message || 'Không thể tiếp tục bằng Google lúc này.');
     } finally {
       setIsSubmitting(false);
     }
@@ -155,6 +169,13 @@ export default function RegisterPage() {
             {isSubmitting ? 'Đang tạo tài khoản...' : 'Đăng ký'}
           </button>
         </form>
+
+        <div className="my-5 flex items-center gap-3" aria-hidden="true">
+          <span className="h-px flex-1 bg-[#deded8]" />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-[#737373]">Hoặc</span>
+          <span className="h-px flex-1 bg-[#deded8]" />
+        </div>
+        <GoogleSignInButton onCredential={handleGoogle} disabled={isSubmitting} text="signup_with" />
       </div>
     </AuthShell>
   );

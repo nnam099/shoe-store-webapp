@@ -35,12 +35,16 @@ async function authenticateToken(token) {
     select: {
       id: true,
       passwordHash: true,
+      authVersion: true,
+      isActive: true,
     },
   });
 
   if (
     !user
-    || !isCurrentPasswordVersion(claims.passwordVersion, user.passwordHash)
+    || !user.isActive
+    || (claims.authVersion !== null && claims.authVersion !== user.authVersion)
+    || (claims.passwordVersion !== null && !isCurrentPasswordVersion(claims.passwordVersion, user.passwordHash))
   ) {
     throw unauthorizedError();
   }

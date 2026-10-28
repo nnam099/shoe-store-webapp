@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import AuthField from '../components/auth/AuthField';
+import GoogleSignInButton from '../components/auth/GoogleSignInButton';
 import { useAuth } from '../context/authContextValue';
 import { validateAddress, validateFullName, validatePhone } from '../utils/authValidation';
 
@@ -13,12 +14,28 @@ function profileToForm(member) {
 }
 
 export default function AccountPage() {
-  const { member, updateProfile } = useAuth();
+  const { member, updateProfile, googleLink } = useAuth();
   const [form, setForm] = useState(() => profileToForm(member));
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [linkPassword, setLinkPassword] = useState('');
+  const [linkError, setLinkError] = useState('');
+  const [linkSuccess, setLinkSuccess] = useState('');
+  const hasGoogle = member.authMethods?.includes('GOOGLE');
+
+  const handleGoogleLink = async (credential) => {
+    setLinkError('');
+    setLinkSuccess('');
+    try {
+      await googleLink({ credential, currentPassword: linkPassword });
+      setLinkPassword('');
+      setLinkSuccess('Đã liên kết tài khoản Google.');
+    } catch (error) {
+      setLinkError(error.message || 'Không thể liên kết Google lúc này.');
+    }
+  };
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -161,6 +178,40 @@ export default function AccountPage() {
               {isSubmitting ? 'Đang lưu...' : 'Lưu thay đổi'}
             </button>
           </form>
+
+          <div className="mt-10 border-t border-[#deded8] pt-7">
+            <h2 className="text-lg font-black uppercase tracking-tight">Bảo mật tài khoản</h2>
+            <p className="mt-2 text-xs text-[#737373]">
+              Phương thức hiện có: {(member.authMethods || []).join(', ') || 'Chưa xác định'}.
+            </p>
+            {hasGoogle ? (
+              <p className="mt-4 border border-[#bbf7d0] bg-[#f0fdf4] p-3 text-xs text-[#166534]">
+                Tài khoản Google đã được liên kết.
+              </p>
+            ) : (
+              <div className="mt-5 max-w-md space-y-4">
+                {member.hasPassword && (
+                  <AuthField
+                    id="linkPassword"
+                    name="linkPassword"
+                    label="Mật khẩu STEP/LAB hiện tại"
+                    type="password"
+                    autoComplete="current-password"
+                    required
+                    value={linkPassword}
+                    onChange={(event) => setLinkPassword(event.target.value)}
+                  />
+                )}
+                <GoogleSignInButton
+                  onCredential={handleGoogleLink}
+                  disabled={member.hasPassword && !linkPassword}
+                  text="continue_with"
+                />
+              </div>
+            )}
+            {linkError && <p role="alert" className="mt-3 text-xs text-[#991b1b]">{linkError}</p>}
+            {linkSuccess && <p role="status" className="mt-3 text-xs text-[#166534]">{linkSuccess}</p>}
+          </div>
         </section>
       </div>
     </div>
