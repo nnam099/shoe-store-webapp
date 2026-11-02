@@ -28,3 +28,12 @@ temp/
 # runtime-managed uploads
 server/uploads/*
 !server/uploads/.gitkeep
+
+# deployment secrets and database artifacts
+deploy/.env
+deploy/*.env
+!deploy/*.env.example
+backups/
+*.dump
+*.backup
+*.sql.gz

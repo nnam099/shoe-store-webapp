@@ -1,0 +1,139 @@
+name: ${COMPOSE_PROJECT_NAME:-steplab-local}
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-api-build: &api-build
+  context: .
+  dockerfile: server/Dockerfile
+
+x-api-environment: &api-environment
+  NODE_ENV: production
+  PORT: "5000"
+  DATABASE_URL: "${DATABASE_URL:?DATABASE_URL is required}"
+  SHIPPING_FEE: "${SHIPPING_FEE:-30000}"
+  JWT_MEMBER_SECRET: "${JWT_MEMBER_SECRET:?JWT_MEMBER_SECRET is required}"
+  JWT_MEMBER_EXPIRES_IN: "${JWT_MEMBER_EXPIRES_IN:-8h}"
+  JWT_ADMIN_SECRET: "${JWT_ADMIN_SECRET:?JWT_ADMIN_SECRET is required}"
+  JWT_ADMIN_EXPIRES_IN: "${JWT_ADMIN_EXPIRES_IN:-8h}"
+  GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID:-}"
+  SMTP_HOST: "${SMTP_HOST:-}"
+  SMTP_PORT: "${SMTP_PORT:-587}"
+  SMTP_SECURE: "${SMTP_SECURE:-false}"
+  SMTP_USER: "${SMTP_USER:-}"
+  SMTP_PASS: "${SMTP_PASS:-}"
+  MAIL_FROM_NAME: "${MAIL_FROM_NAME:-STEP/LAB}"
+  MAIL_FROM_ADDRESS: "${MAIL_FROM_ADDRESS:-}"
+  APP_BASE_URL: "${APP_BASE_URL:-http://localhost:8080}"
+  OTP_HMAC_SECRET: "${OTP_HMAC_SECRET:?OTP_HMAC_SECRET is required}"
+  SECURITY_HASH_SECRET: "${SECURITY_HASH_SECRET:?SECURITY_HASH_SECRET is required}"
+  SMTP_CONNECTION_TIMEOUT_MS: "${SMTP_CONNECTION_TIMEOUT_MS:-10000}"
+  SMTP_SOCKET_TIMEOUT_MS: "${SMTP_SOCKET_TIMEOUT_MS:-15000}"
+  EMAIL_WORKER_INTERVAL_MS: "${EMAIL_WORKER_INTERVAL_MS:-10000}"
+  EMAIL_WORKER_BATCH_SIZE: "${EMAIL_WORKER_BATCH_SIZE:-20}"
+  TRUST_PROXY_HOPS: "${TRUST_PROXY_HOPS:-1}"
+  PRODUCT_IMAGE_UPLOAD_DIR: /app/uploads
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: "${POSTGRES_DB:?POSTGRES_DB is required}"
+      POSTGRES_USER: "${POSTGRES_USER:?POSTGRES_USER is required}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - database
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    stop_grace_period: 30s
+    logging: *default-logging
+
+  migrate:
+    profiles: ["tools"]
+    image: steplab-api:local
+    build: *api-build
+    restart: "no"
+    environment: *api-environment
+    command: ["npx", "prisma", "migrate", "deploy"]
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - database
+    logging: *default-logging
+
+  api:
+    image: steplab-api:local
+    build: *api-build
+    restart: unless-stopped
+    init: true
+    environment: *api-environment
+    volumes:
+      - uploads_data:/app/uploads
+    expose:
+      - "5000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - proxy
+      - database
+    healthcheck:
+      test: ["CMD", "node", "deploy/api-healthcheck.mjs"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    stop_grace_period: 15s
+    logging: *default-logging
+
+  web:
+    image: steplab-web:local
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+      args:
+        VITE_GOOGLE_CLIENT_ID: "${VITE_GOOGLE_CLIENT_ID:-}"
+    restart: unless-stopped
+    environment:
+      SITE_ADDRESS: "${SITE_ADDRESS:-:80}"
+    ports:
+      - "${HTTP_PORT:-8080}:80"
+      - "${HTTPS_PORT:-8443}:443"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - proxy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    stop_grace_period: 10s
+    logging: *default-logging
+
+networks:
+  proxy:
+  database:
+    internal: true
+
+volumes:
+  postgres_data:
+  uploads_data:
+  caddy_data:
+  caddy_config:

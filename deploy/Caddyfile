@@ -1,0 +1,25 @@
+{$SITE_ADDRESS} {
+	encode zstd gzip
+
+	handle /healthz {
+		respond "ok" 200
+	}
+
+	@api path /api/*
+	handle @api {
+		reverse_proxy api:5000
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+
+	header {
+		-Server
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Frame-Options "SAMEORIGIN"
+	}
+}
