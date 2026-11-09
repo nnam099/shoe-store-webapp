@@ -1,281 +1,265 @@
-# STEP/LAB — Website Bán Giày Thể Thao Đa Thương Hiệu (Multi-brand Sneaker Store)
+# STEP/LAB — Website bán giày đa thương hiệu
 
-> **Đồ án học phần:** Lập trình Web  
-> **Kiến trúc hệ thống:** Client - Server (RESTful API), kiến trúc cơ sở dữ liệu quan hệ PostgreSQL với Prisma ORM.
+STEP/LAB là hệ thống thương mại điện tử bán giày đa thương hiệu, được xây dựng trong học phần **Lập trình Web** và định hướng phát triển thành website có thể triển khai thực tế. Hệ thống phục vụ đồng thời hai nhóm người dùng:
 
----
+- Khách hàng: khám phá sản phẩm, quản lý tài khoản, giỏ hàng, xác thực checkout và đặt hàng.
+- Cửa hàng: quản trị catalog, tồn kho, khách hàng, đơn hàng, đánh giá và tài khoản Admin.
 
-## 1. Giới thiệu tổng quan
+README mô tả đúng trạng thái hiện tại của dự án. Những tích hợp chưa được nghiệm thu với provider hoặc chưa triển khai public sẽ được ghi rõ, không được xem là chức năng production đã hoàn tất.
 
-**STEP/LAB** là nền tảng thương mại điện tử chuyên biệt cho các dòng giày thể thao và thời trang từ các thương hiệu hàng đầu thế giới (Nike, Adidas, Puma, New Balance, Converse). 
+## Công nghệ
 
-Dự án được xây dựng nhằm đáp ứng trải nghiệm mua sắm trực tuyến hiện đại với các yêu cầu đặc thù của ngành hàng giày dép: quản lý kích cỡ (size EU), biến thể màu sắc (colorway), bộ sưu tập hình ảnh chi tiết theo từng góc độ, quản lý vòng đời đơn hàng và hệ thống đánh giá sản phẩm có xác thực mua hàng.
+### Frontend
 
----
+- React 19, React Router
+- Vite
+- Tailwind CSS
+- Oxlint
 
-## 2. Công nghệ sử dụng (Technology Stack)
+### Backend và dữ liệu
 
-### Frontend (`/client`)
-- **Framework & Build Tool:** [React 19](https://react.dev/), [Vite](https://vite.dev/)
-- **Routing:** [React Router DOM v7](https://reactrouter.com/)
-- **Styling:** [Tailwind CSS v4](https://tailwindcss.com/)
-- **Linter:** [Oxlint](https://oxc.rs/)
+- Node.js, Express, REST API
+- Prisma ORM, PostgreSQL 16
+- JWT cho Member và Admin
+- bcryptjs để hash mật khẩu
+- Google Identity Services và `google-auth-library`
+- Nodemailer cho SMTP
 
-### Backend (`/server`)
-- **Runtime & Framework:** [Node.js](https://nodejs.org/) (ES Modules), [Express.js](https://expressjs.com/)
-- **Kiến trúc mã nguồn:** Phân tầng rõ ràng (`routes` -> `controllers` -> `services` -> `middlewares` -> `config`)
-- **Xử lý lỗi:** Centralized Error Handling, chuẩn hóa mã lỗi HTTP và JSON error response
+### Triển khai
 
-### Cơ sở dữ liệu & ORM
-- **Hệ quản trị CSDL:** [PostgreSQL 16](https://www.postgresql.org/)
-- **ORM:** [Prisma ORM 7](https://www.prisma.io/) (`@prisma/client`, `@prisma/adapter-pg`, driver `pg`)
-- **Toàn vẹn tiền tệ:** Sử dụng kiểu số học chính xác `NUMERIC(12, 0)` cho giá trị tiền tệ (VND)
+- Docker Compose
+- Caddy phục vụ SPA, reverse proxy `/api/*` và HTTPS khi có domain
+- PostgreSQL và uploads dùng persistent named volumes
 
-### Xác thực & Bảo mật (Authentication & Security)
-- **Cơ chế:** JSON Web Token (JWT) lưu tại Client qua cơ chế Bearer Token
-- **Bảo mật mật khẩu:** `bcryptjs` hashing
-- **Middleware:** `requireMember` (bắt buộc xác thực) và `strictOptionalMember` (xác thực tùy chọn nhưng nghiêm ngặt định danh)
+## Chức năng và mức độ hoàn thiện
 
-### Testing
-- **Backend Testing:** Node.js Native Test Runner (`node --test`), kiểm thử tích hợp (Integration Tests) cho luồng Auth, Orders và Reviews.
+### Storefront và tài khoản khách hàng
 
----
+- Catalog đa thương hiệu với Product, Colorway, Variant, size, tồn kho và bộ ảnh.
+- Tìm kiếm, lọc, sắp xếp, phân trang và trang chi tiết sản phẩm.
+- Giỏ hàng lưu trên trình duyệt và kiểm tra lại giá/tồn kho tại server.
+- Đăng ký, đăng nhập, hồ sơ, đổi/quên/đặt lại mật khẩu và lịch sử đơn hàng.
+- Google Login, quy tắc liên kết tài khoản và tài khoản Google-only.
+- Đánh giá sản phẩm dành cho Member đã mua hàng hợp lệ.
 
-## 3. Các chức năng chính (Core Features)
+### B1+B2 — đã hoàn thành và nghiệm thu
 
-### 3.1. Danh mục & Trải nghiệm sản phẩm (Catalog & Storefront)
-- **Catalog đa thương hiệu:** dữ liệu seed ban đầu gồm Nike, Adidas, Puma, New Balance và Converse; Admin có thể quản lý thêm Brand.
-- **Category động:** dữ liệu seed ban đầu gồm Lifestyle, Running, Streetwear và Classic; tên/trạng thái hiện hành đến từ PostgreSQL và Admin API.
-- **Bộ lọc đa chiều:**
-  - Lọc theo thương hiệu và phân loại.
-  - Lọc theo kích cỡ giày (chuẩn EU từ 36 đến 44).
-  - Lọc theo phổ màu sắc (Black, White, Grey, Blue, Red, Beige, Green...).
-  - Lọc theo khoảng giá linh hoạt và trạng thái còn hàng.
-- **6 Chế độ sắp xếp:** Mới nhất, Cũ nhất, Giá tăng dần, Giá giảm dần, Tên A-Z, Tên Z-A.
-- **Trang chi tiết sản phẩm (Product Detail Page):**
-  - Chuyển đổi linh hoạt giữa các phối màu (Colorways).
-  - Thư viện ảnh chi tiết chất lượng cao theo từng phối màu.
-  - Chọn size thời gian thực dựa trên tồn kho thực tế (`stock`).
-  - Hiển thị điểm đánh giá sao trung bình và số lượng nhận xét đã xác thực.
+- Member authentication và Google Login/liên kết tài khoản.
+- Gmail SMTP, OTP checkout, password setup/reset và các giới hạn chống lạm dụng.
+- Checkout Intent có quote/version phía server và xác nhận email.
+- Đặt hàng COD cho Guest/Member.
+- Idempotency và concurrency safety: retry không tạo trùng Order, không trừ kho hoặc tạo email xác nhận hai lần.
+- Email xác nhận đơn hàng qua outbox đối với email giao dịch thông thường.
 
-### 3.2. Giỏ hàng & Mua sắm (Shopping Cart)
-- Quản lý giỏ hàng phía Client bền vững (lưu trữ tại `localStorage`).
-- Thêm sản phẩm theo đúng biến thể cụ thể (Mã sản phẩm + Colorway + Size).
-- Cập nhật số lượng, tự động kiểm tra số lượng tồn kho khả dụng tối đa.
-- Tính toán tạm tính và đồng bộ giỏ hàng theo thời gian thực.
+### Admin — đang hoạt động
 
-### 3.3. Đặt hàng & Vòng đời đơn hàng (Checkout & Orders)
-- **Hỗ trợ 2 đối tượng:** Khách vãng lai (Guest) và Thành viên đã đăng nhập (Member).
-- **Phương thức thanh toán:** COD (Thanh toán khi nhận hàng).
-- **Phí giao hàng:** Cố định 30.000 VNĐ toàn quốc theo quy tắc nghiệp vụ.
-- **API Báo giá tự động:** `/api/checkout/quote` xác thực giá trị tiền hàng, phí ship và tổng tiền.
-- **Mã đơn hàng chuẩn hóa:** Sinh mã tự động dạng `SL-YYMMDD-XXXXXX`.
-- **Tra cứu đơn hàng công khai (`/order-lookup`):** Khách hàng tra cứu nhanh tiến độ đơn chỉ với Mã đơn hàng + Số điện thoại nhận hàng.
-- **Quy tắc vòng đời đơn hàng:**
-  - Hủy đơn hàng: Guest/Member được hủy khi đơn ở trạng thái `PENDING` hoặc `PREPARING`; tồn kho được hoàn đúng một lần.
-  - Xác nhận đã nhận hàng: Cho phép xác nhận khi đơn chuyển sang trạng thái `DELIVERED` để hoàn tất thành `COMPLETED`.
-  - Đơn `DELIVERED` tự động chuyển `COMPLETED` sau 48 giờ nếu khách chưa xác nhận.
+- Xác thực Admin tách biệt với Member.
+- Dashboard, quản lý Brand, Category, Product, Colorway, ảnh, Variant và tồn kho.
+- Quản lý tài khoản Admin, khách hàng, đơn hàng và đánh giá.
+- Upload ảnh được kiểm tra định dạng và lưu trong vùng uploads riêng.
 
-### 3.4. Tài khoản thành viên (Member Management)
-- Đăng ký tài khoản, Đăng nhập và tự động duy trì phiên làm việc qua JWT.
-- Trang thông tin tài khoản (`/account`): Cập nhật họ tên, số điện thoại, địa chỉ nhận hàng mặc định (tự động điền khi thanh toán).
-- Đổi mật khẩu bảo mật (`/account/change-password`).
-- Quên mật khẩu (`/forgot-password`).
-- Quản lý lịch sử đơn hàng (`/account/orders`): Theo dõi danh sách và xem chi tiết tiến độ từng đơn hàng của tài khoản.
+### B3 VNPAY Sandbox — chưa nghiệm thu provider
 
-### 3.5. Đánh giá sản phẩm đã xác thực (Verified Product Reviews)
-- **Quy tắc chống gian lận:** Chỉ thành viên đã mua sản phẩm trong đơn hàng `COMPLETED` mới có quyền gửi đánh giá.
-- Mỗi thành viên chỉ đánh giá 1 lần cho mỗi mẫu sản phẩm đã mua (có quyền cập nhật đánh giá đã viết).
-- Đánh giá từ 1 đến 5 sao, kèm nội dung cảm nhận.
-- Bộ lọc đánh giá theo số sao (Tất cả, 5 sao, 4 sao, 3 sao, 2 sao, 1 sao) và thống kê tỷ lệ phân bổ sao.
+Source và automated tests cho B3 đang được phát triển, gồm Payment Attempt, IPN/Return, QueryDR, reservation tồn kho, retry và reconciliation. Phần này:
 
-### 3.6. Quản trị hệ thống (Admin)
-- Xác thực Admin tách biệt với Member và quản lý tài khoản quản trị.
-- Quản lý Brand, Category, Product, Colorway, ảnh sản phẩm, Variant và tồn kho.
-- Upload logo/ảnh JPEG, PNG, WebP hoặc AVIF; kiểm tra định dạng thực và giới hạn 8 MB.
-- Quản lý vòng đời Order, xem Customer, xóa Review và theo dõi lịch sử trạng thái.
-- Dashboard doanh thu theo `completedAt`, số đơn theo trạng thái, sản phẩm bán chạy và Variant sắp hết hàng.
+- Chưa được nghiệm thu E2E với VNPAY Sandbox thật.
+- Chưa được áp dụng migration vào database development/production trong quy trình release.
+- Không được xem là thanh toán online đang hoạt động thực tế.
+- Đang tạm dừng để ưu tiên Docker/Hosting; sẽ được đồng bộ và nghiệm thu sau Hosting.
 
----
+Docker baseline hiện tại dựa trên B1+B2 ổn định và không phải bản release B3.
 
-## 4. Cấu trúc thư mục (Project Structure)
+## Cấu trúc dự án
 
 ```text
 shoe-store-webapp/
-├── client/                     # Mã nguồn ứng dụng Frontend (React + Vite)
-│   ├── public/                 # Tài nguyên tĩnh công khai (ảnh, icons)
-│   ├── src/
-│   │   ├── components/         # Các UI component (layout, catalog, product-detail, auth...)
-│   │   ├── context/            # Context quản lý trạng thái (AuthContext...)
-│   │   ├── data/               # Nguồn dữ liệu catalog seed ban đầu (không dùng làm runtime Storefront)
-│   │   ├── pages/              # Các trang của ứng dụng (Home, Products, Checkout, Account...)
-│   │   ├── services/           # Các tầng gọi API Backend (auth, order, review, catalog...)
-│   │   ├── utils/              # Tiện ích định dạng tiền tệ, ngày tháng...
-│   │   ├── App.jsx             # Cấu hình Routing của toàn bộ ứng dụng
-│   │   └── main.jsx            # Entry point của React
-│   ├── package.json
-│   └── vite.config.js          # Cấu hình Vite & Proxy API sang port 5000
-│
-├── server/                     # Mã nguồn ứng dụng Backend (Node.js + Express)
-│   ├── prisma/
-│   │   ├── migrations/         # Lịch sử các bản migration cơ sở dữ liệu
-│   │   ├── schema.prisma       # Định nghĩa Schema PostgreSQL và quan hệ bảng
-│   │   ├── seed.js             # Kịch bản nạp dữ liệu mẫu ban đầu (Catalog Seed)
-│   │   └── verify.js           # Kịch bản kiểm tra tính toàn vẹn dữ liệu
-│   ├── src/
-│   │   ├── config/             # Cấu hình môi trường và kết nối Prisma Client
-│   │   ├── controllers/        # Điều hướng yêu cầu HTTP (Auth, Order, Review, Health)
-│   │   ├── middlewares/        # Middlewares xác thực JWT, kiểm tra quyền, xử lý lỗi
-│   │   ├── routes/             # Khai báo các Endpoint REST API
-│   │   ├── services/           # Xử lý nghiệp vụ (Business Logic) và giao tiếp DB
-│   │   ├── app.js              # Khởi tạo Express App và cấu hình CORS, JSON parser
-│   │   └── server.js           # Entry point khởi động HTTP Server
-│   ├── test/                   # Các bài kiểm thử tích hợp (Integration Tests)
-│   ├── .env.example            # Biến môi trường mẫu cho server
-│   └── package.json
-│
-├── docs/                       # Tài liệu kỹ thuật và đặc tả nghiệp vụ
-│   ├── DATABASE.md             # Tài liệu chi tiết 13 bảng CSDL, quan hệ và chỉ mục
-│   └── spec/                   # Tài liệu đặc tả nghiệp vụ chi tiết của đồ án
-├── resources/                  # Tài nguyên thiết kế, hình ảnh sản phẩm gốc
-├── AGENTS.md                   # Bộ quy chuẩn phát triển và ràng buộc nghiệp vụ
-└── README.md                   # Hướng dẫn dự án và cách chạy ứng dụng
+├── client/                  # React/Vite frontend
+│   ├── public/              # Static assets
+│   └── src/                 # Pages, components, contexts, services
+├── server/                  # Express/Prisma backend
+│   ├── prisma/              # Schema, migrations, seed và bootstrap tools
+│   ├── src/                 # Routes, controllers, services, middleware
+│   ├── test/                # Unit và integration tests
+│   └── uploads/             # Managed product/brand uploads tại local
+├── deploy/                  # Caddy, env examples và operational scripts
+├── docs/                    # Đặc tả, database và deployment documentation
+├── resources/               # Tài nguyên sản phẩm gốc
+├── compose.yaml             # Docker Compose stack
+└── README.md
 ```
 
----
+## Chạy Development
 
-## 5. Yêu cầu môi trường (Prerequisites)
+### Yêu cầu
 
-Trước khi tiến hành cài đặt, hãy đảm bảo máy tính đã cài đặt các phần mềm sau:
-- **Node.js**: Phiên bản 18.x hoặc 20.x LTS trở lên (khuyến nghị Node 20+).
-- **npm**: Đi kèm với Node.js.
-- **PostgreSQL**: Phiên bản 16 (chạy cài đặt trực tiếp trên hệ điều hành hoặc qua Docker).
+- Node.js 20+ và npm
+- PostgreSQL 16
+- Một database development riêng; integration tests phải dùng database test cô lập
 
----
+### 1. Cấu hình môi trường
 
-## 6. Hướng dẫn cài đặt và khởi chạy (Getting Started)
+Các file cấu hình mẫu:
 
-### Bước 1: Chuẩn bị môi trường Backend
+- Frontend: `client/.env.example`
+- Backend: `server/.env.example`
 
-Mở terminal và di chuyển vào thư mục `server`:
+Tạo `client/.env` và `server/.env` cục bộ, sau đó điền cấu hình tương ứng. Không commit `.env` hoặc chia sẻ database URL, JWT secret, Gmail App Password, OTP/security secret hay credential VNPAY.
 
-```bash
-cd server
-```
+Google Client ID phía frontend/backend phải khớp nhau. SMTP, Google OAuth và các provider khác chỉ hoạt động khi môi trường hiện tại có credential hợp lệ.
 
-1. Cài đặt các thư viện phụ thuộc:
-   ```bash
-   npm install
-   ```
+### 2. Backend và PostgreSQL
 
-2. Tạo file cấu hình môi trường `.env`:
-   Tạo file `.env` tại thư mục `server/` (sao chép từ `.env.example` hoặc tạo mới) với nội dung:
-   ```env
-   PORT=5000
-   DATABASE_URL="postgresql://postgres:postgres@localhost:5432/shoe_store_dev?schema=public"
-   SHIPPING_FEE=30000
-   JWT_MEMBER_SECRET="<member-secret-local>"
-   JWT_MEMBER_EXPIRES_IN=8h
-   JWT_ADMIN_SECRET="<admin-secret-local>"
-   JWT_ADMIN_EXPIRES_IN=8h
-   PRODUCT_IMAGE_UPLOAD_DIR=
-   ```
-   > *Lưu ý:* Hãy điều chỉnh `postgres:postgres@localhost:5432/shoe_store_dev` cho khớp với tài khoản, mật khẩu và tên CSDL PostgreSQL của bạn. Đảm bảo CSDL `shoe_store_dev` đã được tạo trong PostgreSQL.
-
-### Bước 2: Khởi tạo Cơ sở dữ liệu và nạp dữ liệu mẫu (Seed Data)
-
-Vẫn tại thư mục `server`:
-
-1. Chạy các bản migration để khởi tạo 13 bảng dữ liệu:
-   ```bash
-   npx prisma migrate deploy
-   ```
-
-2. Với database mới, nạp dữ liệu mẫu chuẩn hóa (gồm 5 thương hiệu, 4 danh mục, 20 sản phẩm, 80 phối màu, 314 ảnh, 720 biến thể tồn kho):
-   ```bash
-   npm run seed
-   ```
-
-3. (Tùy chọn) Kiểm tra tính nhất quán của Catalog hiện tại, bao gồm dữ liệu được Admin quản lý:
-   ```bash
-   node prisma/verify.js
-   ```
-
-   Chỉ khi kiểm tra một database vừa seed và chưa được Admin thay đổi, dùng chế độ baseline cố định:
-   ```bash
-   node prisma/verify.js --seed-baseline
-   ```
-
-### Bước 3: Khởi chạy Backend Server
-
-Khởi động server backend ở chế độ phát triển (tự động reload khi sửa code với `nodemon`):
-
-```bash
+```powershell
+Set-Location E:\project\shoe-store-webapp\server
+npm ci
+npx prisma generate
+npx prisma migrate status
+npx prisma migrate deploy
 npm run dev
 ```
 
-Server sẽ lắng nghe tại: `http://localhost:5000`  
-Bạn có thể kiểm tra trạng thái hoạt động qua API Health check: `http://localhost:5000/api/health`
+Backend development chạy tại `http://localhost:5000`. Health endpoint:
 
----
-
-### Bước 4: Chuẩn bị và khởi chạy Frontend Client
-
-Mở một cửa sổ terminal mới và di chuyển vào thư mục `client`:
-
-```bash
-cd client
+```text
+http://localhost:5000/api/health
 ```
 
-1. Cài đặt các thư viện phụ thuộc:
-   ```bash
-   npm install
-   ```
+Chỉ chạy seed trên database mới, đã xác minh đúng danh tính:
 
-2. Khởi chạy giao diện Frontend:
-   ```bash
-   npm run dev
-   ```
-
-3. Mở trình duyệt web và truy cập vào địa chỉ:
-   ```text
-   http://localhost:5173
-   ```
-
-> *Ghi chú cấu hình Proxy:* Trong `vite.config.js`, toàn bộ request có tiền tố `/api` từ giao diện sẽ được tự động proxy chuyển tiếp tới `http://localhost:5000`, đảm bảo kết nối mượt mà và không gặp vấn đề về CORS khi phát triển ở local.
-
----
-
-## 7. Kiểm thử và Kiểm tra chất lượng (Testing & Linting)
-
-### Kiểm thử Backend (Unit và tích hợp API)
-Tại thư mục `server`:
-```bash
-cd server
-npm test
+```powershell
+npm run seed
 ```
 
-> **An toàn dữ liệu:** Integration test tạo và xóa fixture. Chỉ chạy `npm test` khi `DATABASE_URL` trỏ tới database test cô lập. Guard của test sẽ từ chối database phát triển `shoe_store_dev`, nhưng người chạy vẫn phải kiểm tra target trước.
+Không dùng `prisma migrate reset`, `prisma db push` hoặc reseed trên database có dữ liệu cần giữ.
 
-Bộ kiểm thử dùng trình chạy native của Node.js, bao phủ:
-- Xác thực đăng ký, đăng nhập, đổi mật khẩu và quản lý hồ sơ (`auth.integration.test.js`).
-- Vòng đời tạo đơn, tra cứu đơn và quản lý đơn hàng thành viên (`order.member.integration.test.js`).
-- Quy tắc điều kiện và phân trang đánh giá sản phẩm (`review.integration.test.js`).
-- Catalog public, lọc/sort/pagination và Product Detail (`catalog.integration.test.js`).
-- Admin Auth/Catalog, Orders, Customers, Reviews và Dashboard (`admin*.test.js`).
+### 3. Frontend
 
-### Kiểm tra cú pháp Frontend
-Tại thư mục `client`:
-```bash
-cd client
+Mở terminal khác:
+
+```powershell
+Set-Location E:\project\shoe-store-webapp\client
+npm ci
+npm run dev
+```
+
+Frontend development chạy tại `http://localhost:5173`. Vite proxy `/api` sang backend tại `http://localhost:5000`.
+
+### 4. Kiểm tra chất lượng
+
+Backend:
+
+```powershell
+Set-Location E:\project\shoe-store-webapp\server
+npm run test:unit
+npm run test:integration
+```
+
+Integration tests có thao tác dữ liệu. Chỉ chạy khi test environment trỏ tới database test cô lập, ví dụ `shoe_store_test`; tuyệt đối không trỏ tới `shoe_store_dev` hoặc database Docker demo.
+
+Frontend:
+
+```powershell
+Set-Location E:\project\shoe-store-webapp\client
 npm run lint
+npm run build
 ```
-Sử dụng Oxlint để kiểm tra tĩnh chất lượng mã nguồn React.
 
----
+## Chạy Docker local
 
-## 8. Tài liệu kỹ thuật liên quan
+Docker Compose gồm:
 
-- **Tài liệu Cơ sở dữ liệu chi tiết:** Xem tại [docs/DATABASE.md](docs/DATABASE.md) (mô tả chi tiết 13 bảng nghiệp vụ, Data Dictionary, khóa ngoại, chỉ mục hiệu năng và ràng buộc toàn vẹn).
-- **Quy chuẩn phát triển & Ràng buộc kiến trúc:** Xem tại [AGENTS.md](AGENTS.md).
-- **Tài liệu Đặc tả nghiệp vụ gốc:** Xem tại thư mục `docs/spec/`.
+- `web`: Vite production build được Caddy phục vụ.
+- `api`: Express/Prisma chạy bằng user không đặc quyền.
+- `db`: PostgreSQL trên internal network, không public cổng 5432.
+- `migrate`: tool profile để chạy `prisma migrate deploy` có kiểm soát.
+
+### Cảnh báo release source
+
+Không build image từ dirty `main` đang chứa B3 chưa nghiệm thu. Cho đến khi B3 hoàn tất, chỉ build/deploy từ worktree hoặc commit sạch chứa B1+B2 + Docker đã được kiểm tra. Docker build context có thể đưa source và migrations chưa duyệt vào image nếu quy tắc này bị bỏ qua.
+
+### Khởi động an toàn
+
+Từ source/worktree release sạch:
+
+```powershell
+docker compose -p steplab-docker-verify --env-file deploy/.env build
+docker compose -p steplab-docker-verify --env-file deploy/.env up -d db
+docker compose -p steplab-docker-verify --env-file deploy/.env --profile tools run --rm migrate npx prisma migrate status
+docker compose -p steplab-docker-verify --env-file deploy/.env --profile tools run --rm migrate
+docker compose -p steplab-docker-verify --env-file deploy/.env up -d api web
+docker compose -p steplab-docker-verify --env-file deploy/.env ps
+```
+
+Instance local đã kiểm tra dùng:
+
+- Website: `http://localhost:18080`
+- Health API: `http://localhost:18080/api/health`
+- Admin login: `http://localhost:18080/admin/login`
+
+`postgres_data` và `uploads_data` là persistent volumes. Dừng ứng dụng mà không xóa dữ liệu:
+
+```powershell
+docker compose -p steplab-docker-verify --env-file deploy/.env stop web api
+```
+
+Không dùng `docker compose down --volumes` trừ khi owner chủ động phê duyệt xóa toàn bộ dữ liệu.
+
+Quy trình migration, backup, restore verification, update và HTTPS được mô tả chi tiết tại [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
+## Quản trị Admin
+
+### Docker local đã kiểm tra
+
+- URL: `http://localhost:18080/admin/login`
+- Email Admin local: `admin.ltw2026@gmail.com`
+- Mật khẩu Admin local: `Adminltw2026`
+
+Credential Docker local chỉ phục vụ môi trường Docker hiện tại, không được tái sử dụng làm credential production.
+
+> **Cảnh báo:** README hiện chứa credential Docker local theo yêu cầu của owner để phục vụ đồ án cuối kỳ. Không công khai, chia sẻ hoặc commit/push README này khi credential còn tồn tại; phải xóa mật khẩu khỏi tài liệu trước khi repository được xuất bản.
+
+### Đổi mật khẩu an toàn
+
+1. Đăng nhập Admin bằng credential hiện tại.
+2. Mở **Tài khoản quản trị**.
+3. Chọn **Đổi mật khẩu của tôi**.
+4. Nhập mật khẩu hiện tại, mật khẩu mới và xác nhận mật khẩu mới trực tiếp trong form.
+5. Sau khi đổi thành công, đăng nhập lại bằng mật khẩu mới.
+
+Backend kiểm tra mật khẩu hiện tại, yêu cầu mật khẩu mới khác mật khẩu cũ, giới hạn 8–72 byte UTF-8 và hash bằng bcrypt. JWT Admin chứa fingerprint phụ thuộc password hash, vì vậy token cũ bị vô hiệu hóa sau khi đổi mật khẩu.
+
+Ngoài credential Docker local được owner yêu cầu ghi rõ ở trên, không lưu mật khẩu khác vào README, source, command-line argument hoặc Git. Không tái sử dụng credential local cho production.
+
+## Bảo mật và Hosting
+
+- README hiện chứa credential Docker local và không được công khai/commit/push cho đến khi mật khẩu được xóa. `.env`, credential khác, database dump, backup và uploads runtime không được commit.
+- Mỗi môi trường phải dùng database và bộ secret riêng; production không dùng `shoe_store_dev` hoặc database Docker local.
+- Chỉ chạy migration production sau khi review SQL, backup và trial restore thành công.
+- Domain production phải dùng HTTPS; Caddy có thể cấp/gia hạn certificate sau khi DNS và cổng 80/443 được cấu hình đúng.
+- `APP_BASE_URL`, frontend origin, CORS/trust proxy và URL callback phải khớp domain HTTPS.
+- Cập nhật Google OAuth Authorized JavaScript Origins cho domain production; frontend/backend phải dùng cùng Client ID.
+- Cấu hình lại Gmail SMTP sender/App Password và các dịch vụ ngoài cho production; không sao chép secret từ development.
+- PostgreSQL không public Internet; backup database và uploads phải được mã hóa, lưu ngoài máy chủ và kiểm tra restore định kỳ.
+- B3 VNPAY chỉ được bật sau khi migration, credential Sandbox, chữ ký, IPN/Return và E2E provider được nghiệm thu.
+
+Hosting public hiện **chưa được triển khai**.
+
+## Trạng thái và lộ trình
+
+| Hạng mục | Trạng thái |
+|---|---|
+| B1+B2 Auth, Email, OTP, COD | Hoàn thành và đã nghiệm thu |
+| Storefront và Admin | Đang hoạt động |
+| Docker local | Hoàn thành kiểm thử kỹ thuật |
+| Docker catalog | Đã import 21 Products, 81 Colorways, 726 Variants và 318 Product Images |
+| Docker Admin | Đã bootstrap và xác minh tài khoản local |
+| Hosting public | Chưa triển khai |
+| B3 VNPAY Sandbox | Có source/automated tests; tạm dừng, chưa nghiệm thu provider |
+| B4 | Chưa triển khai |
+
+## Tài liệu liên quan
+
+- [Deployment guide](docs/DEPLOYMENT.md)
+- [Database documentation](docs/DATABASE.md)
+- [Đặc tả nghiệp vụ](docs/spec/)
+- [Quy tắc làm việc](AGENTS.md)
